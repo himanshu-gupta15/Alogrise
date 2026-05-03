@@ -56,7 +56,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logoutUser } from '../authSlice';
-import { ShieldAlert, LayoutDashboard, Terminal, LogOut, User as UserIcon, Menu, X } from 'lucide-react';
+import { ShieldAlert, LayoutDashboard, Terminal, LogOut, User as UserIcon, Menu, X, Trophy } from 'lucide-react';
 
 const AdminNavbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -75,13 +75,14 @@ const AdminNavbar = () => {
 
   const navLinks = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
+    { name: 'Contest Builder', path: '/admin/contest', icon: Trophy },
     { name: 'Terminal', path: '/', icon: Terminal },
   ];
 
   return (
     <nav className="sticky top-0 z-50 w-full bg-black/80 backdrop-blur-xl border-b border-white/10 transition-all duration-500">
       {/* Top Neon Accent Line */}
-      <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
+      <div className="absolute top-0 left-0 h-px w-full bg-linear-to-r from-transparent via-cyan-500/50 to-transparent"></div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
@@ -90,12 +91,12 @@ const AdminNavbar = () => {
           <div className="flex items-center gap-12">
             <Link to="/admin" className="flex items-center gap-3 group">
               <div className="relative">
-                <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full blur opacity-40 group-hover:opacity-100 transition duration-500"></div>
-                <div className="relative w-10 h-10 rounded-full border border-white/20 overflow-hidden bg-black flex items-center justify-center">
+                <div className="absolute -inset-1 bg-linear-to-r from-cyan-500 to-purple-600 rounded-full blur opacity-40 group-hover:opacity-100 transition duration-500"></div>
+                <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/20 bg-black">
                   <ShieldAlert className="text-cyan-400" size={20} />
                 </div>
               </div>
-              <span className="text-2xl font-black tracking-tighter bg-gradient-to-r from-white via-slate-200 to-slate-500 bg-clip-text text-transparent group-hover:from-cyan-400 group-hover:to-purple-500 transition-all duration-500">
+              <span className="text-2xl font-black tracking-tighter bg-linear-to-r from-white via-slate-200 to-slate-500 bg-clip-text text-transparent group-hover:from-cyan-400 group-hover:to-purple-500 transition-all duration-500">
                 ALGORISE <span className="text-[10px] font-mono ml-1 text-cyan-500 uppercase tracking-[0.2em]">Admin_OS</span>
               </span>
             </Link>
@@ -104,7 +105,7 @@ const AdminNavbar = () => {
               {navLinks.map((item) => (
                 <Link key={item.name} to={item.path} className="group relative flex items-center gap-2">
                   <item.icon size={14} className="text-slate-500 group-hover:text-cyan-400 transition-colors" />
-                  <span className="text-sm font-black tracking-widest uppercase bg-gradient-to-r from-slate-100 to-slate-500 bg-clip-text text-transparent group-hover:from-cyan-400 group-hover:to-purple-500 transition-all duration-500">
+                  <span className="text-sm font-black tracking-widest uppercase bg-linear-to-r from-slate-100 to-slate-500 bg-clip-text text-transparent group-hover:from-cyan-400 group-hover:to-purple-500 transition-all duration-500">
                     {item.name}
                   </span>
                 </Link>
@@ -119,7 +120,7 @@ const AdminNavbar = () => {
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
                   className="flex items-center gap-3 focus:outline-none group bg-white/5 hover:bg-white/10 p-2 pr-4 rounded-full border border-white/10 transition-all"
                 >
-                  <div className="w-10 h-10 rounded-full p-[2px] bg-gradient-to-r from-cyan-500 to-purple-600">
+                  <div className="w-10 h-10 rounded-full bg-linear-to-r from-cyan-500 to-purple-600 p-0.5">
                     <div className="w-full h-full rounded-full bg-slate-900 border border-black flex items-center justify-center text-white font-black overflow-hidden uppercase">
                       {user?.firstName?.charAt(0) || 'A'}
                     </div>

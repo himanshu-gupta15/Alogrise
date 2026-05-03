@@ -16,7 +16,7 @@ const redisOptions = redisUrl
     }
   : {
       username: redisUser,
-      password: process.env.REDIS_PASS,
+      password: process.env.REDIS_PASSWORD,
       socket: {
         host: redisHost,
         port: redisPort,

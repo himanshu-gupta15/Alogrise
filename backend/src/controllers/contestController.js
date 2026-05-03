@@ -129,6 +129,11 @@ const joinContest = async (req, res) => {
       return res.status(400).send("Contest has already ended");
     }
 
+    // Disallow joining before contest start
+    if (status === "upcoming") {
+      return res.status(400).send("Contest has not started yet");
+    }
+
     const alreadyJoined = contest.participants.some((pid) => pid.toString() === userId.toString());
     if (alreadyJoined) {
       return res.status(200).json({ message: "Already joined this contest" });

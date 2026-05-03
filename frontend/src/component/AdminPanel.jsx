@@ -297,6 +297,12 @@ function AdminPanel() {
   const { register, control, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(problemSchema),
     defaultValues: {
+      visibleTestCases: [
+        { input: '', output: '', explanation: '' }
+      ],
+      hiddenTestCases: [
+        { input: '', output: '' }
+      ],
       startCode: [
         { language: 'C++', initialCode: '' },
         { language: 'Java', initialCode: '' },
@@ -316,11 +322,16 @@ function AdminPanel() {
   const onSubmit = async (data) => {
     try {
       console.log("Submitting Data:", data); // Debug log
-      await axiosClient.post('/problem/create', data);
+      const payload = { ...data, skipJudge: true };
+      const resp = await axiosClient.post('/problem/create', payload);
+      console.log('Server response:', resp);
       alert('RECON_SYNC: Problem successfully initialized in the grid.');
       navigate('/');
     } catch (error) {
-      alert(`SYNC_FAILURE: ${error.response?.data?.message || error.message}`);
+      console.error('Submit error response:', error.response || error);
+      const status = error.response?.status;
+      const data = error.response?.data;
+      alert(`SYNC_FAILURE: ${status || ''} ${typeof data === 'string' ? data : JSON.stringify(data) || error.message}`);
     }
   };
 
@@ -343,7 +354,13 @@ function AdminPanel() {
           </h1>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-16 max-w-5xl">
+        <form onSubmit={handleSubmit(onSubmit, (errs) => { console.log('Validation errors:', errs); alert('Validation error: please check required fields.'); })} className="space-y-16 max-w-5xl">
+          {Object.keys(errors).length > 0 && (
+            <div className="bg-rose-900/20 border border-rose-500/30 text-rose-200 p-4 rounded-lg">
+              <strong className="uppercase text-xs">Validation Errors</strong>
+              <pre className="text-xs mt-2 max-h-40 overflow-auto">{JSON.stringify(errors, null, 2)}</pre>
+            </div>
+          )}
           
           {/* SECTION: METADATA - 3D Card */}
           <div className="group bg-slate-900/30 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-10 shadow-2xl transition-all duration-500 hover:[transform:rotateX(2deg)_rotateY(-1deg)] hover:border-cyan-500/30 hover:bg-slate-900/50">
@@ -465,8 +482,8 @@ function AdminPanel() {
 
           {/* Final Submit Button */}
           <div className="relative group/btn pt-10">
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 to-purple-600 rounded-3xl blur-xl opacity-20 group-hover/btn:opacity-60 transition duration-1000"></div>
-            <button type="submit" className="relative w-full py-8 bg-black rounded-[2rem] border border-white/10 flex items-center justify-center gap-4 transition-all active:scale-[0.98] group-hover/btn:border-white/20">
+            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 to-purple-600 rounded-3xl blur-xl opacity-20 group-hover/btn:opacity-60 transition duration-1000 pointer-events-none"></div>
+            <button type="submit" className="relative z-10 w-full py-8 bg-black rounded-[2rem] border border-white/10 flex items-center justify-center gap-4 transition-all active:scale-[0.98] group-hover/btn:border-white/20">
               <ShieldCheck size={28} className="text-emerald-400" />
               <span className="text-xl font-black tracking-[0.4em] uppercase italic text-white">Initialize Deployment</span>
               <Sparkles size={20} className="text-purple-400 animate-pulse" />

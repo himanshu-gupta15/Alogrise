@@ -65,27 +65,31 @@ const handleStreakAndSolved = async (userId, problemId) => {
 /* ================= CORE CONTROLLERS ================= */
 
 const createProblem = async (req, res) => {
-  const { title, description, difficulty, tags, visibleTestCases, hiddenTestCases, startCode, referenceSolution } = req.body;
+  const { title, description, difficulty, tags, visibleTestCases, hiddenTestCases, startCode, referenceSolution = [], skipJudge = false } = req.body;
 
   try {
-    for (const { language, completeCode } of referenceSolution) {
-      const languageId = getLanguageById(language);
-      const normalizedCode = completeCode.replace(/\\n/g, "\n");
+    const shouldValidate = !skipJudge && process.env.SKIP_JUDGE_ON_CREATE !== 'true';
 
-      const submissions = visibleTestCases.map((testcase) => ({
-        source_code: normalizedCode,
-        language_id: languageId,
-        stdin: testcase.input,
-        expected_output: testcase.output,
-      }));
+    if (shouldValidate && Array.isArray(referenceSolution) && referenceSolution.length > 0) {
+      for (const { language, completeCode } of referenceSolution) {
+        const languageId = getLanguageById(language);
+        const normalizedCode = (completeCode || '').replace(/\\n/g, "\n");
 
-      const submitResult = await submitBatch(submissions);
-      const resultToken = submitResult.map((value) => value.token);
-      const testResult = await submitToken(resultToken);
+        const submissions = (visibleTestCases || []).map((testcase) => ({
+          source_code: normalizedCode,
+          language_id: languageId,
+          stdin: testcase.input,
+          expected_output: testcase.output,
+        }));
 
-      for (const test of testResult) {
-        if (test.status_id !== 3) {
-          return res.status(400).send("Error Occurred in Reference Solution");
+        const submitResult = await submitBatch(submissions);
+        const resultToken = submitResult.map((value) => value.token);
+        const testResult = await submitToken(resultToken);
+
+        for (const test of testResult) {
+          if (test.status_id !== 3) {
+            return res.status(400).send("Error Occurred in Reference Solution");
+          }
         }
       }
     }

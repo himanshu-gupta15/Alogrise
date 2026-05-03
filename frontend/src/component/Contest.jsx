@@ -26,6 +26,7 @@ const Contest = () => {
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("all");
   const [joiningId, setJoiningId] = useState("");
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     const fetchContests = async () => {
@@ -41,6 +42,25 @@ const Contest = () => {
 
     fetchContests();
   }, []);
+
+  // Tick every second so countdowns update
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const formatRemaining = (ms) => {
+    if (ms <= 0) return "00:00:00";
+    const totalSeconds = Math.floor(ms / 1000);
+    const days = Math.floor(totalSeconds / (24 * 3600));
+    const hours = Math.floor((totalSeconds % (24 * 3600)) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    const two = (v) => String(v).padStart(2, "0");
+    if (days > 0) return `${days}d ${two(hours)}:${two(minutes)}:${two(seconds)}`;
+    return `${two(hours)}:${two(minutes)}:${two(seconds)}`;
+  };
 
   const visibleContests = useMemo(() => {
     if (activeFilter === "all") return contests;
@@ -114,8 +134,18 @@ const Contest = () => {
           </div>
         ) : (
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {visibleContests.map((contest) => (
-              <div key={contest._id} className="glass-panel rounded-3xl p-6">
+            {visibleContests.map((contest) => {
+              const targetTime = contest.status === 'upcoming' ? new Date(contest.startTime).getTime() : contest.status === 'live' ? new Date(contest.endTime).getTime() : null;
+              const diff = targetTime ? targetTime - now : null;
+
+              return (
+              <div key={contest._id} className="glass-panel relative rounded-3xl p-6">
+                {targetTime && diff !== null && diff > 0 && (
+                  <div className="absolute right-4 top-4 flex items-center gap-2 rounded-full bg-black/40 border border-white/10 px-3 py-1 text-xs font-bold text-white">
+                    <Timer size={14} />
+                    <span>{formatRemaining(diff)}</span>
+                  </div>
+                )}
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <span
                     className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
@@ -142,19 +172,21 @@ const Contest = () => {
                     <Timer size={15} className="text-purple-300" />
                     Ends: {formatDate(contest.endTime)}
                   </p>
-                  <p className="flex items-center gap-2 text-slate-300">
-                    <Users size={15} className="text-emerald-300" />
-                    {contest.participantCount}/{contest.maxParticipants} participants
-                  </p>
+                  {contest.participantCount > 0 && contest.maxParticipants > 0 && (
+                    <p className="flex items-center gap-2 text-slate-300">
+                      <Users size={15} className="text-emerald-300" />
+                      {contest.participantCount}/{contest.maxParticipants} participants
+                    </p>
+                  )}
                 </div>
 
                 <button
-                  disabled={contest.joined || contest.status === "ended" || joiningId === contest._id}
+                  disabled={contest.joined || contest.status !== "live" || joiningId === contest._id}
                   onClick={() => handleJoin(contest._id)}
                   className={`mt-5 w-full rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest transition ${
                     contest.joined
                       ? "cursor-not-allowed border border-emerald-400/30 bg-emerald-500/10 text-emerald-300"
-                      : contest.status === "ended"
+                      : contest.status !== "live"
                       ? "cursor-not-allowed border border-white/10 bg-white/5 text-slate-500"
                       : "bg-cyan-500 text-black hover:bg-cyan-400"
                   }`}
@@ -162,7 +194,8 @@ const Contest = () => {
                   {contest.joined ? "Joined" : joiningId === contest._id ? "Joining..." : "Join Contest"}
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
