@@ -319,10 +319,38 @@ function AdminPanel() {
   const { fields: visibleFields, append: appendVisible, remove: removeVisible } = useFieldArray({ control, name: 'visibleTestCases' });
   const { fields: hiddenFields, append: appendHidden, remove: removeHidden } = useFieldArray({ control, name: 'hiddenTestCases' });
 
+  const normalizeMultilineText = (value) => {
+    if (typeof value !== 'string') return value;
+    return value.replace(/\\n/g, '\n');
+  };
+
+  const normalizeProblemPayload = (data) => ({
+    ...data,
+    visibleTestCases: data.visibleTestCases?.map((testCase) => ({
+      ...testCase,
+      input: normalizeMultilineText(testCase.input),
+      output: normalizeMultilineText(testCase.output),
+      explanation: normalizeMultilineText(testCase.explanation)
+    })) ?? [],
+    hiddenTestCases: data.hiddenTestCases?.map((testCase) => ({
+      ...testCase,
+      input: normalizeMultilineText(testCase.input),
+      output: normalizeMultilineText(testCase.output)
+    })) ?? [],
+    startCode: data.startCode?.map((codeBlock) => ({
+      ...codeBlock,
+      initialCode: normalizeMultilineText(codeBlock.initialCode)
+    })) ?? [],
+    referenceSolution: data.referenceSolution?.map((codeBlock) => ({
+      ...codeBlock,
+      completeCode: normalizeMultilineText(codeBlock.completeCode)
+    })) ?? []
+  });
+
   const onSubmit = async (data) => {
     try {
       console.log("Submitting Data:", data); // Debug log
-      const payload = { ...data, skipJudge: true };
+      const payload = { ...normalizeProblemPayload(data), skipJudge: true };
       const resp = await axiosClient.post('/problem/create', payload);
       console.log('Server response:', resp);
       alert('RECON_SYNC: Problem successfully initialized in the grid.');
@@ -468,11 +496,31 @@ function AdminPanel() {
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <div className="space-y-3">
                                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Initial Environment</p>
-                                <textarea {...register(`startCode.${idx}.initialCode`)} className="w-full h-64 bg-black/60 border border-white/5 rounded-2xl p-6 font-mono text-xs text-cyan-400 focus:border-cyan-500 outline-none transition-all scrollbar-hide" />
+                                <textarea
+                                  {...register(`startCode.${idx}.initialCode`)}
+                                  rows={16}
+                                  spellCheck={false}
+                                  wrap="soft"
+                                  placeholder={`Paste ${lang} starter code here...`}
+                                  className="w-full min-h-[18rem] bg-black/60 border border-white/5 rounded-2xl p-6 font-mono text-sm leading-7 tracking-wide text-cyan-300 focus:border-cyan-500 outline-none transition-all resize-y overflow-auto scrollbar-hide"
+                                />
+                                <p className="text-[10px] text-slate-500 font-medium uppercase tracking-widest px-1">
+                                  Multi-line code is supported. New lines will be preserved.
+                                </p>
                             </div>
                             <div className="space-y-3">
                                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Reference Kernel (Solution)</p>
-                                <textarea {...register(`referenceSolution.${idx}.completeCode`)} className="w-full h-64 bg-black/60 border border-white/5 rounded-2xl p-6 font-mono text-xs text-emerald-400 focus:border-emerald-500 outline-none transition-all scrollbar-hide" />
+                                <textarea
+                                  {...register(`referenceSolution.${idx}.completeCode`)}
+                                  rows={16}
+                                  spellCheck={false}
+                                  wrap="soft"
+                                  placeholder={`Paste ${lang} reference solution here...`}
+                                  className="w-full min-h-[18rem] bg-black/60 border border-white/5 rounded-2xl p-6 font-mono text-sm leading-7 tracking-wide text-emerald-300 focus:border-emerald-500 outline-none transition-all resize-y overflow-auto scrollbar-hide"
+                                />
+                                <p className="text-[10px] text-slate-500 font-medium uppercase tracking-widest px-1">
+                                  Keep the solution readable with one statement per line.
+                                </p>
                             </div>
                         </div>
                     </div>

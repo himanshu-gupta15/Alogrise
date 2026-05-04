@@ -82,6 +82,40 @@ import redisClient from "../config/redis.js";
 import User from "../models/user.js";
 import validate from "../utils/validator.js";
 
+const buildPublicUser = (user) => ({
+  _id: user._id,
+  firstName: user.firstName,
+  lastName: user.lastName,
+  emailId: user.emailId,
+  role: user.role,
+  profilePicture: user.profilePicture || '',
+  githubLink: user.githubLink || '',
+  linkedinLink: user.linkedinLink || '',
+  bio: user.bio || '',
+  streak: user.streak || 0,
+  globalRank: user.globalRank || 0,
+  xp: user.xp || 0,
+  followersCount: user.followers?.length || 0,
+  followingCount: user.following?.length || 0,
+  problemSolvedCount: user.problemSolved?.length || 0,
+  followers: (user.followers || []).map((follower) => ({
+    _id: follower._id,
+    firstName: follower.firstName,
+    lastName: follower.lastName,
+    profilePicture: follower.profilePicture || '',
+    githubLink: follower.githubLink || '',
+    linkedinLink: follower.linkedinLink || '',
+  })),
+  following: (user.following || []).map((followedUser) => ({
+    _id: followedUser._id,
+    firstName: followedUser.firstName,
+    lastName: followedUser.lastName,
+    profilePicture: followedUser.profilePicture || '',
+    githubLink: followedUser.githubLink || '',
+    linkedinLink: followedUser.linkedinLink || '',
+  })),
+});
+
 
 const register = async (req, res) => {
   try {
@@ -105,9 +139,16 @@ const register = async (req, res) => {
     res.status(201).json({
       user: {
         firstName: user.firstName,
+        lastName: user.lastName,
         emailId: user.emailId,
         _id: user._id,
         role: user.role,
+        profilePicture: user.profilePicture || '',
+        githubLink: user.githubLink || '',
+        linkedinLink: user.linkedinLink || '',
+        bio: user.bio || '',
+        followersCount: user.followers?.length || 0,
+        followingCount: user.following?.length || 0,
       },
       message: "Registered Successfully",
     });
@@ -140,9 +181,16 @@ const login = async (req, res) => {
     res.status(200).json({
       user: {
         firstName: user.firstName,
+        lastName: user.lastName,
         emailId: user.emailId,
         _id: user._id,
         role: user.role,
+        profilePicture: user.profilePicture || '',
+        githubLink: user.githubLink || '',
+        linkedinLink: user.linkedinLink || '',
+        bio: user.bio || '',
+        followersCount: user.followers?.length || 0,
+        followingCount: user.following?.length || 0,
       },
       message: "Login Successfully",
     });
@@ -248,6 +296,7 @@ export const promoteUser = async (req, res) => {
 const deleteProfile=async(req,res)=>{
   try{
     const userId=req.result._id;
+    await User.updateMany({}, { $pull: { followers: userId, following: userId } });
     await User.findByIdAndDelete(userId);
     res.status(200).send("Deleted Successfully");
 
@@ -271,6 +320,105 @@ export const getLeaderboard = async (req, res) => {
   } catch (error) {
     console.error("Leaderboard Query Error:", error);
     res.status(500).json({ message: "Unable to sync with the User Grid." });
+  }
+};
+
+export const getUserProfile = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const viewerId = req.result?._id?.toString();
+
+    const profileUser = await User.findById(userId)
+      .select('-password')
+      .populate('followers', 'firstName lastName profilePicture githubLink linkedinLink')
+      .populate('following', 'firstName lastName profilePicture githubLink linkedinLink');
+
+    if (!profileUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const isFollowing = viewerId
+      ? profileUser.followers.some((follower) => follower._id.toString() === viewerId)
+      : false;
+
+    res.status(200).json({
+      user: {
+        ...buildPublicUser(profileUser.toObject()),
+        isFollowing,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Unable to load profile', error: error.message });
+  }
+};
+
+export const updateMyProfile = async (req, res) => {
+  try {
+    const userId = req.result._id;
+    const { firstName, lastName, profilePicture, githubLink, linkedinLink, bio } = req.body;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        ...(firstName !== undefined ? { firstName } : {}),
+        ...(lastName !== undefined ? { lastName } : {}),
+        ...(profilePicture !== undefined ? { profilePicture } : {}),
+        ...(githubLink !== undefined ? { githubLink } : {}),
+        ...(linkedinLink !== undefined ? { linkedinLink } : {}),
+        ...(bio !== undefined ? { bio } : {}),
+      },
+      { new: true, runValidators: true }
+    )
+      .select('-password')
+      .populate('followers', 'firstName lastName profilePicture githubLink linkedinLink')
+      .populate('following', 'firstName lastName profilePicture githubLink linkedinLink');
+
+    res.status(200).json({ user: buildPublicUser(updatedUser.toObject()), message: 'Profile updated successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Unable to update profile', error: error.message });
+  }
+};
+
+export const toggleFollowUser = async (req, res) => {
+  try {
+    const viewerId = req.result._id.toString();
+    const { userId } = req.params;
+
+    if (viewerId === userId) {
+      return res.status(400).json({ message: 'You cannot follow yourself' });
+    }
+
+    const targetUser = await User.findById(userId);
+    const viewer = await User.findById(viewerId);
+
+    if (!targetUser || !viewer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const isFollowing = viewer.following.some((followedId) => followedId.toString() === userId);
+
+    if (isFollowing) {
+      await User.updateOne({ _id: viewerId }, { $pull: { following: userId } });
+      await User.updateOne({ _id: userId }, { $pull: { followers: viewerId } });
+    } else {
+      await User.updateOne({ _id: viewerId }, { $addToSet: { following: userId } });
+      await User.updateOne({ _id: userId }, { $addToSet: { followers: viewerId } });
+    }
+
+    const updatedTarget = await User.findById(userId)
+      .select('-password')
+      .populate('followers', 'firstName lastName profilePicture githubLink linkedinLink')
+      .populate('following', 'firstName lastName profilePicture githubLink linkedinLink');
+
+    res.status(200).json({
+      message: isFollowing ? 'Unfollowed successfully' : 'Followed successfully',
+      user: {
+        ...buildPublicUser(updatedTarget.toObject()),
+        isFollowing: !isFollowing,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Unable to update follow state', error: error.message });
   }
 };
 

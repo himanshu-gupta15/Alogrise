@@ -1,188 +1,142 @@
 import React from 'react';
-import { Target, Zap, Shield, Cpu, Globe, Terminal, ChartColumnIncreasing, Flame, Clock3, CheckCircle2, Rocket, Brain, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { BookOpen, ChartColumnIncreasing, CheckCircle2, Clock3, Code2, Flame, Globe2, Rocket, ShieldCheck, Sparkles, Target, Users } from 'lucide-react';
 
 const AboutUs = () => {
   const navigate = useNavigate();
 
-  const features = [
+  const pillars = [
     {
-      title: 'Adaptive Learning',
-      desc: 'Personalized practice recommendations and AI hints based on your current performance.',
-      icon: Cpu,
-      color: 'text-cyan-400',
-    },
-    {
-      title: 'Fast Execution Sandbox',
-      desc: 'Secure code execution for C++, Java, and JavaScript with low-latency feedback.',
-      icon: Terminal,
-      color: 'text-purple-400',
-    },
-    {
-      title: 'Clear Visual Explanations',
-      desc: 'Editorial videos and walkthroughs that simplify advanced algorithmic patterns.',
-      icon: Zap,
-      color: 'text-emerald-400',
-    },
-  ];
-
-  const impactStats = [
-    { label: 'Problems Curated', value: '500+', icon: BookOpen },
-    { label: 'Daily Active Learners', value: '10k+', icon: Flame },
-    { label: 'Avg. Session Time', value: '43 min', icon: Clock3 },
-    { label: 'Interview-Focused Tracks', value: '30+', icon: ChartColumnIncreasing },
-  ];
-
-  const roadmap = [
-    {
-      title: 'Assess Your Level',
-      desc: 'Start with a guided diagnostic set to map strengths and weak areas.',
-      icon: Brain,
-    },
-    {
-      title: 'Follow Smart Sheets',
-      desc: 'Move through structured topic sheets with progressive difficulty.',
+      title: 'Structured Learning Paths',
+      desc: 'Topic-wise progression so learners always know what to solve next.',
       icon: BookOpen,
     },
     {
-      title: 'Practice Under Time',
-      desc: 'Use timed sessions and challenge mode to simulate real tests and rounds.',
-      icon: Clock3,
+      title: 'Interview-Centric Practice',
+      desc: 'Problems and explanations focused on real company interview patterns.',
+      icon: Target,
     },
     {
-      title: 'Track + Iterate',
-      desc: 'Analyze attempts, revise patterns, and improve consistency week over week.',
-      icon: Rocket,
+      title: 'Reliable Performance Insights',
+      desc: 'Track acceptance, activity, streak, and growth with clarity.',
+      icon: ChartColumnIncreasing,
     },
+  ];
+
+  const stats = [
+    { value: '500+', label: 'Problems Curated', icon: Code2 },
+    { value: '10k+', label: 'Active Learners', icon: Users },
+    { value: '43 min', label: 'Avg Session Time', icon: Clock3 },
+    { value: '30+', label: 'Learning Tracks', icon: Flame },
   ];
 
   return (
     <div className="relative min-h-screen overflow-hidden pb-20 text-white">
-      <div className="pointer-events-none absolute right-0 top-0 h-125 w-125 rounded-full bg-cyan-500/10 blur-[140px]"></div>
-      <div className="pointer-events-none absolute bottom-0 left-0 h-125 w-125 rounded-full bg-purple-500/10 blur-[140px]"></div>
+      <div className="pointer-events-none absolute -top-16 right-0 h-112 w-md rounded-full bg-cyan-500/10 blur-[120px]" />
+      <div className="pointer-events-none absolute bottom-0 left-0 h-112 w-md rounded-full bg-purple-500/10 blur-[120px]" />
 
       <div className="relative z-10 mx-auto w-full max-w-7xl px-6 pt-16 lg:px-8">
-        <div className="mb-16 max-w-4xl border-l-2 border-cyan-400/70 pl-6">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300">About ALGORISE</p>
-          <h1 className="mb-5 text-5xl font-black leading-tight md:text-6xl">
-            Train with purpose. <span className="brand-gradient">Ship with confidence.</span>
-          </h1>
-          <p className="max-w-2xl text-lg leading-relaxed text-slate-300">
-            ALGORISE is a focused coding practice platform built for students, interview candidates, and competitive programmers who want structured growth.
-          </p>
-        </div>
+        <section className="grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.26em] text-cyan-300">About ALGORISE</p>
+            <h1 className="mt-4 text-4xl font-black leading-tight md:text-6xl">
+              A professional platform for
+              <span className="brand-gradient"> coding interview mastery</span>
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 md:text-lg">
+              ALGORISE helps students and professionals build strong DSA fundamentals with guided practice,
+              practical editorial support, and clear performance tracking.
+            </p>
 
-        <div className="mb-20 grid grid-cols-1 gap-6 md:grid-cols-3">
-          {features.map((item) => (
-            <div key={item.title} className="glass-panel rounded-3xl p-8 transition hover:-translate-y-1 hover:border-cyan-400/40">
-              <div className={`mb-5 inline-flex rounded-xl border border-white/10 bg-white/5 p-3 ${item.color}`}>
-                <item.icon size={24} />
-              </div>
-              <h3 className="mb-3 text-xl font-bold text-white">{item.title}</h3>
-              <p className="text-sm leading-relaxed text-slate-400">{item.desc}</p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button onClick={() => navigate('/practice')} className="btn-primary px-7 py-3">
+                Start Practicing
+              </button>
+              <button onClick={() => navigate('/contest')} className="btn-secondary px-7 py-3">
+                Explore Contests
+              </button>
             </div>
-          ))}
-        </div>
-
-        <div className="mb-20 grid items-center gap-10 lg:grid-cols-2">
-          <div className="glass-panel rounded-3xl p-5">
-            <img src="/dashboard-preview.png" alt="ALGORISE dashboard preview" className="w-full rounded-2xl border border-white/10" />
           </div>
 
-          <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300">Why teams choose us</p>
-            <h2 className="mb-7 text-3xl font-black md:text-4xl">Built for measurable improvement</h2>
-            <div className="space-y-5">
+          <div className="glass-panel rounded-3xl p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300">Platform highlights</p>
+            <div className="mt-4 space-y-3">
               {[
-                { t: 'Global Benchmarking', d: 'Track progress against peers with transparent ranking and streak systems.', i: Globe },
-                { t: 'Reliable Solutions', d: 'Reference solutions optimized for readability, complexity, and interview relevance.', i: Shield },
-                { t: 'AI Assisted Guidance', d: 'Receive practical hints that teach approach and reasoning, not just answers.', i: Target },
+                { icon: ShieldCheck, text: 'Secure compiler execution pipeline' },
+                { icon: Globe2, text: 'Global ranking and performance visibility' },
+                { icon: Sparkles, text: 'AI-assisted hint workflow for faster learning' },
+                { icon: Rocket, text: 'Progressive difficulty for consistent growth' },
               ].map((item) => (
-                <div key={item.t} className="flex items-start gap-4 rounded-xl border border-white/10 bg-slate-900/40 p-4">
-                  <div className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 p-2 text-cyan-300">
-                    <item.i size={18} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-white">{item.t}</h3>
-                    <p className="mt-1 text-sm text-slate-400">{item.d}</p>
-                  </div>
+                <div key={item.text} className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-900/50 px-4 py-3">
+                  <item.icon size={17} className="text-cyan-300" />
+                  <p className="text-sm text-slate-300">{item.text}</p>
                 </div>
               ))}
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="mb-20 rounded-3xl border border-white/10 bg-linear-to-r from-cyan-500/8 via-transparent to-purple-500/8 p-8 md:p-10">
-          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-cyan-300">Impact at a glance</p>
-              <h2 className="text-3xl font-black md:text-4xl">Built for real outcomes</h2>
+        <section className="mt-14 grid gap-5 md:grid-cols-3">
+          {pillars.map((item) => (
+            <div key={item.title} className="glass-panel rounded-2xl p-6">
+              <div className="inline-flex rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-3 text-cyan-300">
+                <item.icon size={20} />
+              </div>
+              <h3 className="mt-4 text-xl font-bold text-white">{item.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-400">{item.desc}</p>
             </div>
-            <p className="max-w-lg text-sm text-slate-400">Every feature is designed to improve solving confidence, speed, and interview readiness.</p>
+          ))}
+        </section>
+
+        <section className="mt-14 rounded-3xl border border-white/10 bg-linear-to-r from-cyan-500/8 via-transparent to-purple-500/8 p-6 md:p-10">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">Impact</p>
+              <h2 className="mt-2 text-3xl font-black">Performance-driven outcomes</h2>
+            </div>
+            <p className="max-w-xl text-sm text-slate-400">Designed to increase consistency, confidence, and interview readiness through disciplined practice.</p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {impactStats.map((stat) => (
-              <div key={stat.label} className="rounded-2xl border border-white/10 bg-slate-900/45 p-5">
-                <div className="mb-4 inline-flex rounded-xl border border-white/10 bg-white/5 p-2 text-cyan-300">
-                  <stat.icon size={18} />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {stats.map((item) => (
+              <div key={item.label} className="rounded-2xl border border-white/10 bg-slate-900/50 p-5">
+                <div className="inline-flex rounded-lg border border-white/10 bg-white/5 p-2 text-cyan-300">
+                  <item.icon size={18} />
                 </div>
-                <p className="text-2xl font-black text-white">{stat.value}</p>
-                <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">{stat.label}</p>
+                <p className="mt-4 text-3xl font-black text-white">{item.value}</p>
+                <p className="mt-1 text-xs uppercase tracking-[0.14em] text-slate-400">{item.label}</p>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        <div className="mb-20 grid gap-10 lg:grid-cols-2">
-          <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300">How growth happens</p>
-            <h2 className="mb-6 text-3xl font-black md:text-4xl">A clear learning journey</h2>
-            <p className="mb-8 max-w-xl text-slate-400">ALGORISE removes randomness from preparation. You always know what to solve next and why.</p>
-
-            <div className="space-y-4">
-              {roadmap.map((step, idx) => (
-                <div key={step.title} className="flex gap-4 rounded-2xl border border-white/10 bg-slate-900/40 p-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-400/30 bg-cyan-500/10 text-cyan-300">
-                    <step.icon size={18} />
-                  </div>
-                  <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Step {idx + 1}</p>
-                    <h3 className="text-sm font-semibold text-white">{step.title}</h3>
-                    <p className="mt-1 text-sm text-slate-400">{step.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+        <section className="mt-14 grid gap-6 lg:grid-cols-2">
+          <div className="glass-panel rounded-3xl p-7">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">Our Mission</p>
+            <h3 className="mt-3 text-3xl font-black">Make quality preparation accessible</h3>
+            <p className="mt-4 text-sm leading-7 text-slate-300">
+              We aim to provide a focused environment where learners can practice intentionally,
+              understand patterns deeply, and prepare for interviews with confidence.
+            </p>
           </div>
 
-          <div className="glass-panel rounded-3xl p-7 md:p-8">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300">What users report</p>
-            <h3 className="mb-6 text-2xl font-black">Consistency that compounds</h3>
-
-            <div className="space-y-4">
+          <div className="glass-panel rounded-3xl p-7">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">What You Get</p>
+            <div className="mt-4 space-y-3">
               {[
-                'Clear next-step recommendations after every session.',
-                'Topic mastery improves with revision-oriented practice loops.',
-                'Timed solving builds confidence for OAs and interviews.',
-                'Daily challenge habit improves momentum and discipline.',
-              ].map((point) => (
-                <div key={point} className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/3 p-4">
-                  <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-emerald-300" />
-                  <p className="text-sm leading-relaxed text-slate-300">{point}</p>
+                'Curated problem sets with progressive difficulty',
+                'Editorial support and clear conceptual guidance',
+                'Practical analytics to track real improvement',
+                'Contest-style pressure for interview readiness',
+              ].map((line) => (
+                <div key={line} className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                  <CheckCircle2 size={17} className="mt-0.5 shrink-0 text-emerald-300" />
+                  <p className="text-sm text-slate-300">{line}</p>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-
-        <div className="glass-panel rounded-4xl p-10 text-center md:p-14">
-          <h2 className="mx-auto mb-4 max-w-2xl text-3xl font-black md:text-4xl">Ready to improve your consistency?</h2>
-          <p className="mx-auto mb-8 max-w-xl text-slate-400">Start solving curated problems with guided learning paths and detailed feedback.</p>
-          <button onClick={() => navigate('/practice')} className="btn-primary px-8 py-3">
-            Start Practicing
-          </button>
-        </div>
+        </section>
       </div>
     </div>
   );

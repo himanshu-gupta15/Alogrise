@@ -321,7 +321,7 @@ function App() {
         <Route path="/signin" element={isAuthenticated ? <Navigate to="/" replace /> : <Signin />} />
 
         {/* ================= USER ROUTES ================= */}
-         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+         <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/practice" element={<ProtectedRoute><ProblemPractice /></ProtectedRoute>} />
         <Route path="/contest" element={<ProtectedRoute><Contest /></ProtectedRoute>} />
         <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />

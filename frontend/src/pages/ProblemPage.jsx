@@ -1022,6 +1022,11 @@ import {
 
 const langMap = { cpp: 'C++', java: 'Java', javascript: 'JavaScript' };
 
+const normalizeCodeText = (value) => {
+  if (typeof value !== 'string') return '';
+  return value.replace(/\\n/g, '\n');
+};
+
 const ProblemPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch(); // Initialize dispatch
@@ -1047,7 +1052,7 @@ const ProblemPage = () => {
         const response = await axiosClient.get(`/problem/problemById/${problemId}`);
         const langData = response.data.startCode.find(sc => sc.language === langMap[selectedLanguage]);
         setProblem(response.data);
-        setCode(langData ? langData.initialCode : "");
+        setCode(normalizeCodeText(langData?.initialCode));
       } catch (error) {
         console.error('Error fetching problem:', error);
       } finally {
@@ -1061,7 +1066,7 @@ const ProblemPage = () => {
   useEffect(() => {
     if (problem) {
       const langData = problem.startCode.find(sc => sc.language === langMap[selectedLanguage]);
-      setCode(langData ? langData.initialCode : "// No boilerplate available");
+      setCode(normalizeCodeText(langData?.initialCode || "// No boilerplate available"));
     }
   }, [selectedLanguage, problem]);
 
@@ -1173,7 +1178,7 @@ const ProblemPage = () => {
       
       {/* SUCCESS MODAL OVERLAY */}
       {showSuccess && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-500">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 p-6 backdrop-blur-md animate-in fade-in duration-500">
           <div className="relative bg-[#0a0a0a] border border-emerald-500/20 w-full max-w-md rounded-[2.5rem] p-10 text-center shadow-2xl">
             <div className="relative inline-flex mb-8">
               <div className="absolute -inset-4 bg-emerald-500/20 rounded-full blur-xl animate-ping"></div>
@@ -1213,7 +1218,7 @@ const ProblemPage = () => {
             >
               <tab.icon size={14} />
               {tab.label}
-              {activeLeftTab === tab.id && <div className="absolute bottom-0 left-0 w-full h-[2px] bg-cyan-500 shadow-[0_0_10px_#06b6d4]"></div>}
+              {activeLeftTab === tab.id && <div className="absolute bottom-0 left-0 h-0.5 w-full bg-cyan-500 shadow-[0_0_10px_#06b6d4]"></div>}
             </button>
           ))}
         </div>
@@ -1224,21 +1229,31 @@ const ProblemPage = () => {
               {activeLeftTab === 'description' && (
                 <div className="animate-in fade-in slide-in-from-left-4 duration-500">
                   <div className="flex items-center gap-4 mb-8">
-                    <h1 className="text-4xl font-black tracking-tighter text-white uppercase italic">{problem.title}</h1>
+                    <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white md:text-5xl">{problem.title}</h1>
                     <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getDifficultyColor(problem.difficulty)}`}>
                       {problem.difficulty}
                     </span>
                   </div>
-                  <div className="text-slate-400 leading-relaxed font-medium mb-12 border-l-2 border-white/10 pl-6 py-2 italic text-lg">{problem.description}</div>
+
+                  <div className="mb-12 border-l-2 border-white/10 pl-6 py-2 text-xl leading-9 text-slate-300 md:text-2xl md:leading-10">
+                    {problem.description}
+                  </div>
+
                   <div className="space-y-8">
                     {problem.visibleTestCases.map((example, index) => (
-                      <div key={index} className="bg-white/[0.03] border border-white/5 rounded-3xl p-8 hover:bg-white/[0.06] transition-all">
-                        <h4 className="text-[10px] font-black text-slate-600 uppercase mb-4 tracking-widest">Example Case_{index + 1}</h4>
-                        <div className="font-mono text-sm space-y-3">
-                          <p><span className="text-cyan-500/50 font-black mr-4 uppercase">Input:</span> {example.input}</p>
-                          <p><span className="text-emerald-500/50 font-black mr-4 uppercase">Output:</span> {example.output}</p>
-                          <div className="mt-4 p-4 bg-black/40 rounded-xl border border-white/5 text-xs text-slate-500 leading-relaxed italic">
-                             <span className="text-[9px] font-black uppercase block mb-1">Logic Detail:</span> {example.explanation}
+                      <div key={index} className="bg-white/3 border border-white/5 rounded-3xl p-8 transition-all hover:bg-white/6">
+                        <h4 className="text-[10px] font-black text-slate-600 uppercase mb-4 tracking-widest">Example Case {index + 1}</h4>
+                        <div className="space-y-3 text-base text-slate-200">
+                          <p>
+                            <span className="mr-3 text-xs font-black uppercase tracking-[0.18em] text-cyan-400/80">Input:</span>
+                            <span className="whitespace-pre-wrap font-mono"> {example.input?.replace(/\\n/g, '\n')}</span>
+                          </p>
+                          <p>
+                            <span className="mr-3 text-xs font-black uppercase tracking-[0.18em] text-emerald-400/80">Output:</span>
+                            <span className="whitespace-pre-wrap font-mono"> {example.output?.replace(/\\n/g, '\n')}</span>
+                          </p>
+                          <div className="mt-4 rounded-xl border border-white/5 bg-black/40 p-4 text-sm leading-relaxed text-slate-400">
+                             <span className="mb-1 block text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Logic Detail:</span> {example.explanation}
                           </div>
                         </div>
                       </div>
@@ -1266,7 +1281,7 @@ const ProblemPage = () => {
                   ${activeRightTab === tab ? 'text-purple-400' : 'text-slate-600 hover:text-slate-400'}`}
               >
                 {tab}
-                {activeRightTab === tab && <div className="absolute bottom-0 left-0 w-full h-[2px] bg-purple-500 shadow-[0_0_10px_#a855f7]"></div>}
+                {activeRightTab === tab && <div className="absolute bottom-0 left-0 h-0.5 w-full bg-purple-500 shadow-[0_0_10px_#a855f7]"></div>}
               </button>
             ))}
           </div>
@@ -1301,6 +1316,8 @@ const ProblemPage = () => {
                     padding: { top: 24 },
                     lineNumbersMinChars: 4,
                     scrollBeyondLastLine: false,
+                  wordWrap: 'on',
+                  wrappingIndent: 'same',
                     cursorSmoothCaretAnimation: true
                 }}
             />
@@ -1312,7 +1329,7 @@ const ProblemPage = () => {
               {runResult ? (
                 <div className="space-y-6 animate-in fade-in duration-300">
                   {runResult.testCase?.map((tc, i) => (
-                    <div key={i} className="group bg-white/[0.02] border border-white/5 rounded-2xl p-6 transition-all hover:bg-white/[0.04]">
+                    <div key={i} className="group rounded-2xl border border-white/5 bg-white/2 p-6 transition-all hover:bg-white/4">
                       <div className="flex justify-between items-center mb-6">
                         <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Case_{i+1}</span>
                         <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border shadow-sm ${tc.status_id === 3 ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' : 'text-rose-400 border-rose-500/20 bg-rose-500/5'}`}>

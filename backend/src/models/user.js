@@ -31,11 +31,41 @@ const userSchema = new Schema({
         enum: ['user', 'admin'],
         default: 'user'
     },
+    profilePicture: {
+        type: String,
+        default: ''
+    },
+    githubLink: {
+        type: String,
+        default: ''
+    },
+    linkedinLink: {
+        type: String,
+        default: ''
+    },
+    bio: {
+        type: String,
+        default: ''
+    },
     // References to problems solved
     problemSolved: {
         type: [{
             type: Schema.Types.ObjectId,
             ref: 'problem' // Ensure this matches your Problem model name
+        }],
+        default: []
+    },
+    followers: {
+        type: [{
+            type: Schema.Types.ObjectId,
+            ref: 'user'
+        }],
+        default: []
+    },
+    following: {
+        type: [{
+            type: Schema.Types.ObjectId,
+            ref: 'user'
         }],
         default: []
     },

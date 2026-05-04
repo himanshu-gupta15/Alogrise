@@ -117,8 +117,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, NavLink, Link, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { Menu, X, ChevronDown } from 'lucide-react';
+import { Menu, X, ChevronDown, Search } from 'lucide-react';
 import { logoutUser } from '../authSlice';
+import axiosClient from '../utils/axiosClient';
 
 const navItems = [
   { label: 'Home', path: '/' },
@@ -130,6 +131,11 @@ const navItems = [
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [allUsers, setAllUsers] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -138,7 +144,44 @@ const Navbar = () => {
   useEffect(() => {
     setIsOpen(false);
     setShowProfileMenu(false);
+    setShowSearchResults(false);
   }, [location.pathname]);
+
+  const fetchUsersForSearch = async () => {
+    if (!isAuthenticated || allUsers.length > 0) return;
+
+    try {
+      setSearchLoading(true);
+      const { data } = await axiosClient.get('/user/getleaderboard');
+      const users = Array.isArray(data) ? data : [];
+      setAllUsers(users);
+    } catch {
+      setAllUsers([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const trimmed = searchTerm.trim().toLowerCase();
+    if (!trimmed) {
+      setSearchResults([]);
+      return;
+    }
+
+    const nextResults = allUsers
+      .filter((entry) => entry?._id && entry._id !== user?._id)
+      .filter((entry) => {
+        const fullName = `${entry?.firstName || ''} ${entry?.lastName || ''}`.trim().toLowerCase();
+        const email = (entry?.emailId || '').toLowerCase();
+        return fullName.includes(trimmed) || email.includes(trimmed);
+      })
+      .slice(0, 6);
+
+    setSearchResults(nextResults);
+  }, [allUsers, isAuthenticated, searchTerm, user?._id]);
 
   const handleLogout = () => {
     dispatch(logoutUser());
@@ -149,6 +192,12 @@ const Navbar = () => {
     `text-sm font-semibold tracking-wide transition-colors ${
       isActive ? 'text-cyan-300' : 'text-slate-300 hover:text-cyan-200'
     }`;
+
+  const handleSearchSelect = (targetUserId) => {
+    setShowSearchResults(false);
+    setSearchTerm('');
+    navigate(`/profile/${targetUserId}`);
+  };
 
   return (
     <nav className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/80 backdrop-blur-xl">
@@ -172,6 +221,51 @@ const Navbar = () => {
             </NavLink>
           )}
         </div>
+
+        {isAuthenticated && (
+          <div className="relative hidden w-full max-w-xs md:block">
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2">
+              <Search size={16} className="text-slate-400" />
+              <input
+                value={searchTerm}
+                onFocus={() => {
+                  fetchUsersForSearch();
+                  setShowSearchResults(true);
+                }}
+                onChange={(event) => {
+                  setSearchTerm(event.target.value);
+                  setShowSearchResults(true);
+                }}
+                placeholder="Search users"
+                className="w-full bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-500"
+              />
+            </div>
+
+            {showSearchResults && (searchTerm.trim() || searchLoading) && (
+              <div className="glass-panel absolute left-0 right-0 z-30 mt-2 max-h-72 overflow-y-auto rounded-xl p-2">
+                {searchLoading ? (
+                  <p className="px-3 py-2 text-sm text-slate-400">Loading users...</p>
+                ) : searchResults.length > 0 ? (
+                  searchResults.map((entry) => (
+                    <button
+                      key={entry._id}
+                      onClick={() => handleSearchSelect(entry._id)}
+                      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition hover:bg-white/5"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-white">{entry.firstName} {entry.lastName}</p>
+                        <p className="text-xs text-slate-400">{entry.emailId}</p>
+                      </div>
+                      <p className="text-xs text-cyan-300">#{entry.globalRank || 'N/A'}</p>
+                    </button>
+                  ))
+                ) : (
+                  <p className="px-3 py-2 text-sm text-slate-400">No users found</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="hidden items-center gap-3 md:flex">
           {!isAuthenticated ? (
@@ -237,6 +331,42 @@ const Navbar = () => {
       {isOpen && (
         <div className="border-t border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur-xl md:hidden">
           <div className="flex flex-col gap-3">
+            {isAuthenticated && (
+              <div className="mb-2">
+                <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2">
+                  <Search size={16} className="text-slate-400" />
+                  <input
+                    value={searchTerm}
+                    onFocus={() => fetchUsersForSearch()}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    placeholder="Search users"
+                    className="w-full bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-500"
+                  />
+                </div>
+
+                {searchTerm.trim() && (
+                  <div className="mt-2 rounded-xl border border-white/10 bg-slate-900/90 p-2">
+                    {searchResults.length > 0 ? (
+                      searchResults.map((entry) => (
+                        <button
+                          key={entry._id}
+                          onClick={() => {
+                            setIsOpen(false);
+                            handleSearchSelect(entry._id);
+                          }}
+                          className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-200 hover:bg-white/5"
+                        >
+                          {entry.firstName} {entry.lastName}
+                        </button>
+                      ))
+                    ) : (
+                      <p className="px-3 py-2 text-sm text-slate-400">No users found</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {navItems.map((item) => (
               <NavLink key={item.path} to={item.path} className={navClass} end={item.path === '/'}>
                 {item.label}
