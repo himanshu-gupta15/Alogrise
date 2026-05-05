@@ -6,6 +6,7 @@ import {
   getAllContests,
   getContestById,
   joinContest,
+  startVirtualContest,
 } from "../controllers/contestController.js";
 
 const contestRouter = express.Router();
@@ -14,5 +15,6 @@ contestRouter.post("/create", adminMiddleware, createContest);
 contestRouter.get("/all", userMiddleware, getAllContests);
 contestRouter.get("/:id", userMiddleware, getContestById);
 contestRouter.post("/join/:id", userMiddleware, joinContest);
+contestRouter.post("/virtual/:id", userMiddleware, startVirtualContest);
 
 export default contestRouter;

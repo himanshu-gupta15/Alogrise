@@ -245,14 +245,15 @@ import AdminPanel from "./component/AdminPanel";
 import AdminDelete from "./component/AdminDelete";
 import AdminVideo from "./component/AdminVideo";
 import AdminUpload from "./component/AdminUpload";
+import AdminInterview from "./component/AdminInterview";
 
 import { checkAuth } from "./authSlice";
-import AboutUs from "./component/Aboutus";
 import AdminUpdate_problem from "./component/AdminUpdate_problem";
 import Profile from "./component/Profile";
 import Leaderboard from "./component/Leaderboard";
 import Contest from "./component/Contest";
 import AdminContest from "./component/AdminContest";
+import Interview from "./pages/Interview";
 
 function App() {
   const dispatch = useDispatch();
@@ -314,7 +315,7 @@ function App() {
       <Routes>
         {/* ================= USER-ONLY HOME ROUTE ================= */}
         <Route path="/" element={<HomeGuard />} />
-          <Route path="/aboutus" element={<AboutUs />} />
+        <Route path="/aboutus" element={<Navigate to="/interview" replace />} />
 
         {/* ================= PUBLIC ROUTES ================= */}
         <Route path="/signup" element={isAuthenticated ? <Navigate to="/" replace /> : <Registration />} />
@@ -323,6 +324,7 @@ function App() {
         {/* ================= USER ROUTES ================= */}
          <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/practice" element={<ProtectedRoute><ProblemPractice /></ProtectedRoute>} />
+        <Route path="/interview" element={<ProtectedRoute><Interview /></ProtectedRoute>} />
         <Route path="/contest" element={<ProtectedRoute><Contest /></ProtectedRoute>} />
         <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
         <Route path="/problem/:problemId" element={<ProtectedRoute><ProblemPage /></ProtectedRoute>} />
@@ -331,6 +333,7 @@ function App() {
         <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
         <Route path="/admin/create" element={<AdminRoute><AdminPanel /></AdminRoute>} />
         <Route path="/admin/contest" element={<AdminRoute><AdminContest /></AdminRoute>} />
+        <Route path="/admin/interview" element={<AdminRoute><AdminInterview /></AdminRoute>} />
         <Route path="/admin/delete" element={<AdminRoute><AdminDelete /></AdminRoute>} />
        <Route path="/admin/update/:id" element={<AdminRoute><AdminUpdate_problem /></AdminRoute>} />
         <Route path="/admin/user-management" element={<AdminRoute><UserManagement /></AdminRoute>} />

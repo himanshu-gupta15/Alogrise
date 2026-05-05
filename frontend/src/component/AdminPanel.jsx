@@ -265,6 +265,7 @@ import { Code2, Beaker, FileText, Plus, Trash2, ShieldCheck, EyeOff, Sparkles, L
   description: z.string().min(1, 'Description is required'),
   difficulty: z.enum(['easy', 'medium', 'hard']),
   tags: z.enum(['array', 'linkedList', 'graph', 'dp']),
+  companiesCsv: z.string().optional(),
   visibleTestCases: z.array(
     z.object({
       input: z.string().min(1, 'Input is required'),
@@ -324,9 +325,16 @@ function AdminPanel() {
     return value.replace(/\\n/g, '\n');
   };
 
-  const normalizeProblemPayload = (data) => ({
-    ...data,
-    visibleTestCases: data.visibleTestCases?.map((testCase) => ({
+  const normalizeProblemPayload = (data) => {
+    const { companiesCsv, ...rest } = data;
+
+    return {
+      ...rest,
+      companies: (companiesCsv || '')
+        .split(/[,\n]/)
+        .map((company) => company.trim())
+        .filter(Boolean),
+      visibleTestCases: data.visibleTestCases?.map((testCase) => ({
       ...testCase,
       input: normalizeMultilineText(testCase.input),
       output: normalizeMultilineText(testCase.output),
@@ -345,7 +353,8 @@ function AdminPanel() {
       ...codeBlock,
       completeCode: normalizeMultilineText(codeBlock.completeCode)
     })) ?? []
-  });
+    };
+  };
 
   const onSubmit = async (data) => {
     try {
@@ -427,6 +436,17 @@ function AdminPanel() {
                         <option value="dp">DYN_PROG</option>
                     </select>
                 </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Company Names (Multiple)</label>
+                <textarea
+                  {...register('companiesCsv')}
+                  rows={3}
+                  placeholder="Google, Amazon, Microsoft"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 font-mono text-sm leading-relaxed focus:border-cyan-500 outline-none transition-all resize-none placeholder:text-slate-700"
+                />
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest ml-1">Use comma or new line to add multiple companies</p>
               </div>
             </div>
           </div>

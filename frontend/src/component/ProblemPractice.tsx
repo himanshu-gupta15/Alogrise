@@ -28,6 +28,43 @@ function ProblemPractice() {
     status: 'all'
   });
 
+  const [purchaseNotice, setPurchaseNotice] = useState(null);
+
+  // On mount, check for Stripe redirect params and confirm purchase with backend
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const success = params.get('checkout_success');
+    const sessionId = params.get('session_id');
+    const pack = params.get('pack');
+
+    if (success && sessionId) {
+      (async () => {
+        try {
+          setPurchaseNotice({ type: 'info', message: 'Verifying purchase...' });
+          const { data } = await axiosClient.post('/payment/confirm', { sessionId });
+          if (data?.purchase) {
+            setPurchaseNotice({ type: 'success', message: 'Purchase successful. Pack unlocked.' });
+          } else {
+            setPurchaseNotice({ type: 'error', message: data?.error || 'Purchase could not be confirmed.' });
+          }
+        } catch (err) {
+          setPurchaseNotice({ type: 'error', message: err?.response?.data?.error || 'Purchase confirmation failed.' });
+        } finally {
+          // remove query params to keep UI clean
+          try {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('checkout_success');
+            url.searchParams.delete('session_id');
+            url.searchParams.delete('pack');
+            window.history.replaceState({}, document.title, url.toString());
+          } catch (e) {
+            // ignore
+          }
+        }
+      })();
+    }
+  }, []);
+
   /* ================= DATA FETCHING ================= */
 
   useEffect(() => {
@@ -115,6 +152,12 @@ function ProblemPractice() {
             {user ? `${user.firstName}, choose a problem and improve one step at a time.` : 'Select a problem and start coding.'}
           </p>
         </div>
+
+        {purchaseNotice && (
+          <div className={`mb-6 rounded-2xl border px-4 py-3 text-sm ${purchaseNotice.type === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : purchaseNotice.type === 'info' ? 'border-cyan-400/30 bg-cyan-500/8 text-cyan-200' : 'border-rose-500/30 bg-rose-500/10 text-rose-200'}`}>
+            {purchaseNotice.message}
+          </div>
+        )}
 
         {/* Search & Filter Toolbar */}
         <div className="flex flex-col xl:flex-row gap-6 mb-12 p-6 bg-white/3 backdrop-blur-2xl rounded-4xl border border-white/5 shadow-2xl">

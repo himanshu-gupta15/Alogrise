@@ -23,6 +23,12 @@ const problemSchema=new Schema({
         ],
         required:true
     },
+    companies:[
+        {
+            type:String,
+            trim:true,
+        }
+    ],
     visibleTestCases:[
         {
             input:{

@@ -123,7 +123,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { 
     Plus, Edit, Trash2, Video, ShieldCheck, Activity, 
-    Users, FileCode, CheckCircle, ArrowUpRight, Trophy 
+    Users, FileCode, CheckCircle, ArrowUpRight, Trophy, ClipboardList 
 } from 'lucide-react';
 
 function Admin() {
@@ -142,6 +142,7 @@ function Admin() {
         { id: 'delete', title: 'Delete Problem', description: 'Remove problems from the platform', icon: Trash2, color: 'from-rose-400 to-red-600', glow: 'shadow-red-500/40', route: '/admin/delete' },
         { id: 'video', title: 'Video Solutions', description: 'Upload and manage video tutorials', icon: Video, color: 'from-purple-400 to-fuchsia-600', glow: 'shadow-fuchsia-500/40', route: '/admin/video' },
         { id: 'contest-builder', title: 'Contest Builder', description: 'Create contests and assign problems to them', icon: Trophy, color: 'from-cyan-400 to-blue-500', glow: 'shadow-cyan-500/40', route: '/admin/contest' },
+        { id: 'interview-control', title: 'Interview Control', description: 'Manage mock assessment packs and pricing', icon: ClipboardList, color: 'from-amber-300 to-orange-500', glow: 'shadow-amber-500/40', route: '/admin/interview' },
         { id: 'user-management', title: "User Management", description: "Assign roles and monitor access", icon: Users, color: "from-blue-500 to-indigo-600", glow: 'shadow-blue-500/40', route: "/admin/user-management" },
     ];
 

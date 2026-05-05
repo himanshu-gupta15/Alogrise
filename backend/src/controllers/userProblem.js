@@ -4,6 +4,16 @@ import User from "../models/user.js";
 import Submission from "../models/submission.js";
 import SolutionVideo from "../models/solutionVideo.js";
 
+const normalizeCompanies = (companies) => {
+  if (!Array.isArray(companies)) return [];
+
+  const cleaned = companies
+    .map((company) => (typeof company === "string" ? company.trim() : ""))
+    .filter(Boolean);
+
+  return [...new Set(cleaned)];
+};
+
 /* ================= UTILITY FUNCTIONS ================= */
 
 /**
@@ -96,6 +106,7 @@ const createProblem = async (req, res) => {
 
     await Problem.create({
       ...req.body,
+      companies: normalizeCompanies(req.body.companies),
       problemCreator: req.result._id,
     });
 
@@ -110,7 +121,15 @@ const updateProblem = async (req, res) => {
   try {
     if (!id) return res.status(400).send("Missing ID Field");
 
-    const newProblem = await Problem.findByIdAndUpdate(id, { ...req.body }, { runValidators: true, new: true });
+    const payload = {
+      ...req.body,
+    };
+
+    if (Object.prototype.hasOwnProperty.call(req.body, "companies")) {
+      payload.companies = normalizeCompanies(req.body.companies);
+    }
+
+    const newProblem = await Problem.findByIdAndUpdate(id, payload, { runValidators: true, new: true });
     res.status(200).send(newProblem);
   } catch (err) {
     res.status(500).send("Error: " + err);
@@ -132,7 +151,7 @@ const deleteProblem = async (req, res) => {
 const getProblemById = async (req, res) => {
   const { id } = req.params;
   try {
-    const getProblem = await Problem.findById(id).select("_id title description difficulty tags visibleTestCases startCode referenceSolution ");
+    const getProblem = await Problem.findById(id).select("_id title description difficulty tags companies visibleTestCases startCode referenceSolution ");
     if (!getProblem) return res.status(404).send("Problem is Missing");
 
     const videos = await SolutionVideo.findOne({ problemId: id });

@@ -10,6 +10,8 @@ import submitRouter from "./routes/submit.js";
 import aiRouter from "./routes/aiChatting.js";
 import videoRouter from "./routes/videoCreator.js";
 import contestRouter from "./routes/contest.js";
+import paymentRouter from "./routes/payment.js";
+import interviewRouter from "./routes/interview.js";
 const app=express()
 
 app.use(cors({
@@ -26,6 +28,8 @@ app.use('/submission',submitRouter)
 app.use('/ai',aiRouter)
 app.use("/video",videoRouter)
 app.use("/contest",contestRouter)
+app.use('/payment', paymentRouter)
+app.use('/interview', interviewRouter)
 
 
 console.log("PORT:",process.env.PORT)

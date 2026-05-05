@@ -9,6 +9,12 @@ const getContestStatus = (startTime, endTime) => {
   return "live";
 };
 
+const getContestDurationMs = (startTime, endTime) => {
+  const start = new Date(startTime).getTime();
+  const end = new Date(endTime).getTime();
+  return Math.max(0, end - start);
+};
+
 const createContest = async (req, res) => {
   try {
     const { title, description, startTime, endTime, problems, maxParticipants } = req.body;
@@ -65,12 +71,16 @@ const getAllContests = async (req, res) => {
 
     const response = contests.map((contest) => {
       const participantIds = contest.participants?.map((id) => id.toString()) || [];
+      const joined = userId ? participantIds.includes(userId) : false;
+      const status = getContestStatus(contest.startTime, contest.endTime);
+
       return {
         ...contest,
-        status: getContestStatus(contest.startTime, contest.endTime),
+        status,
         participantCount: participantIds.length,
         problemCount: contest.problems?.length || 0,
-        joined: userId ? participantIds.includes(userId) : false,
+        joined,
+        canStartVirtual: status === "ended" && !joined,
       };
     });
 
@@ -98,12 +108,15 @@ const getContestById = async (req, res) => {
 
     const participantIds = contest.participants?.map((pid) => pid.toString()) || [];
     const userId = req.result?._id?.toString();
+    const joined = userId ? participantIds.includes(userId) : false;
+    const status = getContestStatus(contest.startTime, contest.endTime);
 
     res.status(200).json({
       ...contest,
-      status: getContestStatus(contest.startTime, contest.endTime),
+      status,
       participantCount: participantIds.length,
-      joined: userId ? participantIds.includes(userId) : false,
+      joined,
+      canStartVirtual: status === "ended" && !joined,
     });
   } catch (error) {
     res.status(500).send("Internal Server Error: " + error.message);
@@ -152,4 +165,55 @@ const joinContest = async (req, res) => {
   }
 };
 
-export { createContest, getAllContests, getContestById, joinContest };
+const startVirtualContest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.result._id;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).send("Invalid contest ID");
+    }
+
+    const contest = await Contest.findById(id)
+      .select("title description startTime endTime problems participants")
+      .lean();
+
+    if (!contest) {
+      return res.status(404).send("Contest not found");
+    }
+
+    const status = getContestStatus(contest.startTime, contest.endTime);
+    if (status !== "ended") {
+      return res.status(400).send("Virtual contest is available only after contest ends");
+    }
+
+    const alreadyParticipated = contest.participants?.some(
+      (participantId) => participantId.toString() === userId.toString()
+    );
+
+    if (alreadyParticipated) {
+      return res.status(400).send("You already participated in the live contest");
+    }
+
+    const durationMs = getContestDurationMs(contest.startTime, contest.endTime);
+    const virtualStartTime = new Date();
+    const virtualEndTime = new Date(virtualStartTime.getTime() + durationMs);
+
+    return res.status(200).json({
+      message: "Virtual contest started",
+      virtualContest: {
+        contestId: contest._id,
+        title: contest.title,
+        description: contest.description,
+        problems: contest.problems,
+        durationMinutes: Math.ceil(durationMs / 60000),
+        virtualStartTime,
+        virtualEndTime,
+      },
+    });
+  } catch (error) {
+    res.status(500).send("Internal Server Error: " + error.message);
+  }
+};
+
+export { createContest, getAllContests, getContestById, joinContest, startVirtualContest };

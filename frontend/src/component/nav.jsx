@@ -123,7 +123,7 @@ import axiosClient from '../utils/axiosClient';
 
 const navItems = [
   { label: 'Home', path: '/' },
-  { label: 'About Us', path: '/aboutus' },
+  { label: 'Interview', path: '/interview' },
   { label: 'Practice', path: '/practice' },
   { label: 'Contest', path: '/contest' },
 ];

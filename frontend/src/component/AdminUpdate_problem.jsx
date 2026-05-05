@@ -9,6 +9,7 @@ function AdminUpdate_problem() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [companiesCsv, setCompaniesCsv] = useState('');
 
   const { register, control, handleSubmit, reset, formState: { errors } } = useForm();
 
@@ -22,6 +23,7 @@ function AdminUpdate_problem() {
         const { data } = await axiosClient.get(`/problem/problemById/${id}`);
         // This pre-populates the entire form, including arrays for TestCases and StartCode
         reset(data); 
+        setCompaniesCsv(Array.isArray(data?.companies) ? data.companies.join(', ') : '');
       } catch (err) {
         console.error("Failed to load problem data", err);
       } finally {
@@ -34,7 +36,14 @@ function AdminUpdate_problem() {
   const onSubmit = async (data) => {
     try {
       setIsSubmitting(true);
-      await axiosClient.put(`/problem/update/${id}`, data);
+      const payload = {
+        ...data,
+        companies: companiesCsv
+          .split(/[,\n]/)
+          .map((company) => company.trim())
+          .filter(Boolean),
+      };
+      await axiosClient.put(`/problem/update/${id}`, payload);
       alert('REVISION_SYNC: Problem successfully updated.');
       navigate('/admin/delete'); 
     } catch (error) {
@@ -109,6 +118,18 @@ function AdminUpdate_problem() {
                     <option value="dp">DYNAMIC_PROG</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Company Names (Multiple)</label>
+                <textarea
+                  value={companiesCsv}
+                  onChange={(e) => setCompaniesCsv(e.target.value)}
+                  rows={3}
+                  placeholder="Google, Amazon, Microsoft"
+                  className="w-full bg-black/40 border border-white/5 rounded-2xl px-6 py-4 font-mono text-sm leading-relaxed focus:border-cyan-500/50 outline-none transition-all resize-none placeholder:text-slate-800"
+                />
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest ml-1">Use comma or new line to add multiple companies</p>
               </div>
             </div>
           </div>
