@@ -10,6 +10,7 @@ function AdminUpdate_problem() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [companiesCsv, setCompaniesCsv] = useState('');
+  const [tagsCsv, setTagsCsv] = useState('');
 
   const { register, control, handleSubmit, reset, formState: { errors } } = useForm();
 
@@ -24,6 +25,7 @@ function AdminUpdate_problem() {
         // This pre-populates the entire form, including arrays for TestCases and StartCode
         reset(data); 
         setCompaniesCsv(Array.isArray(data?.companies) ? data.companies.join(', ') : '');
+        setTagsCsv(Array.isArray(data?.tags) ? data.tags.join(', ') : (data?.tags || ''));
       } catch (err) {
         console.error("Failed to load problem data", err);
       } finally {
@@ -38,6 +40,10 @@ function AdminUpdate_problem() {
       setIsSubmitting(true);
       const payload = {
         ...data,
+        tags: tagsCsv
+          .split(/[,\n]/)
+          .map((tag) => tag.trim().toLowerCase())
+          .filter(Boolean),
         companies: companiesCsv
           .split(/[,\n]/)
           .map((company) => company.trim())
@@ -110,13 +116,15 @@ function AdminUpdate_problem() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Category tag</label>
-                  <select {...register('tags')} className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-4 text-xs font-black uppercase tracking-widest outline-none focus:border-cyan-500 appearance-none cursor-pointer">
-                    <option value="array">ARRAY</option>
-                    <option value="linkedList">LINKED_LIST</option>
-                    <option value="graph">GRAPH_NET</option>
-                    <option value="dp">DYNAMIC_PROG</option>
-                  </select>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Topics (Multiple)</label>
+                  <textarea
+                    value={tagsCsv}
+                    onChange={(e) => setTagsCsv(e.target.value)}
+                    rows={3}
+                    placeholder="array, two pointers, sliding window"
+                    className="w-full bg-black/40 border border-white/5 rounded-2xl px-6 py-4 font-mono text-sm leading-relaxed focus:border-cyan-500/50 outline-none transition-all resize-none placeholder:text-slate-800"
+                  />
+                  <p className="text-[10px] text-slate-500 uppercase tracking-widest ml-1">Use comma or new line to add multiple topics</p>
                 </div>
               </div>
 

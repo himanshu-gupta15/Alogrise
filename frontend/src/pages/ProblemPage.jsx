@@ -1027,6 +1027,21 @@ const normalizeCodeText = (value) => {
   return value.replace(/\\n/g, '\n');
 };
 
+const toDisplayList = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || '').trim()).filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(/[,\n]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
 const ProblemPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch(); // Initialize dispatch
@@ -1258,6 +1273,55 @@ const ProblemPage = () => {
                         </div>
                       </div>
                     ))}
+                  </div>
+
+                  <div className="mt-10 space-y-6">
+                    {toDisplayList(problem.constraints).length > 0 && (
+                      <div>
+                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Constraints</p>
+                        <div className="space-y-2">
+                          {toDisplayList(problem.constraints).map((constraint, index) => (
+                            <p key={`${constraint}-${index}`} className="text-sm text-slate-300">• {constraint}</p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <p className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Topics</p>
+                      <div className="flex flex-wrap gap-2">
+                        {toDisplayList(problem.tags).length > 0 ? (
+                          toDisplayList(problem.tags).map((topic, index) => (
+                            <span
+                              key={`${topic}-${index}`}
+                              className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-300"
+                            >
+                              {topic}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-slate-500">No topics added</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Companies</p>
+                      <div className="flex flex-wrap gap-2">
+                        {toDisplayList(problem.companies).length > 0 ? (
+                          toDisplayList(problem.companies).map((company, index) => (
+                            <span
+                              key={`${company}-${index}`}
+                              className="rounded-full border border-purple-500/20 bg-purple-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-purple-300"
+                            >
+                              {company}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-slate-500">No companies added</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

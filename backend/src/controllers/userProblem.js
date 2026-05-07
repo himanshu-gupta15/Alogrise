@@ -14,6 +14,27 @@ const normalizeCompanies = (companies) => {
   return [...new Set(cleaned)];
 };
 
+const normalizeTags = (tags) => {
+  if (Array.isArray(tags)) {
+    const cleaned = tags
+      .map((tag) => (typeof tag === "string" ? tag.trim().toLowerCase() : ""))
+      .filter(Boolean);
+
+    return [...new Set(cleaned)];
+  }
+
+  if (typeof tags === "string") {
+    const cleaned = tags
+    .split(/[,\n]/)
+      .map((tag) => tag.trim().toLowerCase())
+      .filter(Boolean);
+
+    return [...new Set(cleaned)];
+  }
+
+  return [];
+};
+
 /* ================= UTILITY FUNCTIONS ================= */
 
 /**
@@ -104,8 +125,14 @@ const createProblem = async (req, res) => {
       }
     }
 
+    const normalizedTags = normalizeTags(tags);
+    if (normalizedTags.length === 0) {
+      return res.status(400).send("At least one topic is required");
+    }
+
     await Problem.create({
       ...req.body,
+      tags: normalizedTags,
       companies: normalizeCompanies(req.body.companies),
       problemCreator: req.result._id,
     });
@@ -127,6 +154,13 @@ const updateProblem = async (req, res) => {
 
     if (Object.prototype.hasOwnProperty.call(req.body, "companies")) {
       payload.companies = normalizeCompanies(req.body.companies);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, "tags")) {
+      payload.tags = normalizeTags(req.body.tags);
+      if (payload.tags.length === 0) {
+        return res.status(400).send("At least one topic is required");
+      }
     }
 
     const newProblem = await Problem.findByIdAndUpdate(id, payload, { runValidators: true, new: true });

@@ -22,6 +22,10 @@ function ProblemPractice() {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(8);
+
   const [filters, setFilters] = useState({
     difficulty: 'all',
     tag: 'all',
@@ -29,6 +33,16 @@ function ProblemPractice() {
   });
 
   const [purchaseNotice, setPurchaseNotice] = useState(null);
+
+  const formatTags = (tags) => (Array.isArray(tags) ? tags.join(', ') : String(tags || ''));
+
+  const hasTagMatch = (tags, query) => {
+    if (!query || query === 'all') return true;
+    if (Array.isArray(tags)) {
+      return tags.some((tag) => String(tag).toLowerCase().includes(query.toLowerCase()));
+    }
+    return String(tags || '').toLowerCase().includes(query.toLowerCase());
+  };
 
   // On mount, check for Stripe redirect params and confirm purchase with backend
   useEffect(() => {
@@ -93,9 +107,7 @@ function ProblemPractice() {
       problem.difficulty.toLowerCase() === filters.difficulty.toLowerCase();
 
     // 2. Tag Match
-    const tagMatch =
-      filters.tag === 'all' ||
-      problem.tags.toLowerCase().includes(filters.tag.toLowerCase());
+    const tagMatch = hasTagMatch(problem.tags, filters.tag);
 
     // 3. Search Match
     const searchMatch = problem.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -107,6 +119,18 @@ function ProblemPractice() {
 
     return difficultyMatch && tagMatch && statusMatch && searchMatch;
   });
+
+  // Pagination derived values
+  const totalProblems = filteredProblems.length;
+  const totalPages = Math.max(1, Math.ceil(totalProblems / pageSize));
+
+  // Keep current page valid when filters/search change
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+    if (currentPage < 1) setCurrentPage(1);
+  }, [currentPage, totalPages]);
+
+  const paginatedProblems = filteredProblems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   /* ================= DYNAMIC STYLES ================= */
 
@@ -192,53 +216,84 @@ function ProblemPractice() {
 
         {/* Problems List - Single Row Format */}
         <div className="space-y-4">
-          {filteredProblems.map((problem, index) => (
-            <NavLink
-              key={problem._id}
-              to={`/problem/${problem._id}`}
-              className="group flex items-center justify-between bg-white/2 border border-white/5 p-8 rounded-4xl hover:bg-white/5 hover:border-cyan-500/30 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4"
-              style={{ animationDelay: `${index * 40}ms` }}
-            >
-              {/* Left Side: Index & Problem Info */}
-              <div className="flex items-center gap-10">
-                <span className="text-xl font-mono text-slate-500 w-10">{(index + 1).toString().padStart(2, '0')}</span>
-                
-                <div>
-                  <h2 className="text-2xl font-black text-white group-hover:text-cyan-400 transition-colors uppercase tracking-tight mb-2">
-                    {problem.title}
-                  </h2>
-                  <div className="flex items-center gap-6">
-                     <span className={`px-4 py-1 text-[15px] font-black uppercase tracking-[0.2em] border rounded-full ${getDifficultyStyles(problem.difficulty)}`}>
-                      {problem.difficulty}
-                    </span>
-                    <div className="flex items-center text-slate-500 text-[15px] font-black uppercase tracking-widest">
-                      <Terminal size={14} className="mr-2 text-cyan-500/50" />
-                      {problem.tags}
+          {paginatedProblems.map((problem, idx) => {
+            const index = (currentPage - 1) * pageSize + idx;
+            return (
+              <NavLink
+                key={problem._id}
+                to={`/problem/${problem._id}`}
+                className="group flex items-center justify-between bg-white/2 border border-white/5 p-8 rounded-4xl hover:bg-white/5 hover:border-cyan-500/30 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4"
+                style={{ animationDelay: `${index * 40}ms` }}
+              >
+                {/* Left Side: Index & Problem Info */}
+                <div className="flex items-center gap-10">
+                  <span className="text-lg md:text-xl font-mono text-slate-500 w-10">{(index + 1).toString().padStart(2, '0')}</span>
+                  
+                  <div>
+                    <h2 className="text-xl md:text-2xl font-black text-white group-hover:text-cyan-400 transition-colors uppercase tracking-tight mb-2">
+                      {problem.title}
+                    </h2>
+                    <div className="flex items-center gap-6">
+                       <span className={`px-4 py-1 text-[15px] font-black uppercase tracking-[0.2em] border rounded-full ${getDifficultyStyles(problem.difficulty)}`}>
+                        {problem.difficulty}
+                      </span>
+                      <div className="flex items-center text-slate-500 text-[15px] font-black uppercase tracking-widest">
+                        <Terminal size={14} className="mr-2 text-cyan-500/50" />
+                        {formatTags(problem.tags)}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Right Side: Dynamic Status Tag */}
-              <div className="flex items-center gap-8">
-                {problem.isSolved ? (
-                  <div className="flex items-center gap-3 px-6 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.1)]">
-                     <CheckCircle2 className="text-emerald-400" size={16} />
-                     <span className="text-[15px] font-black text-emerald-400 uppercase tracking-widest">Solved</span>
-                  </div>
-                ) : (
-                  <div className="px-6 py-2 bg-white/5 border border-white/10 rounded-xl group-hover:border-cyan-500/30 transition-all">
-                     <span className="text-[15px] font-black text-slate-500 group-hover:text-white uppercase tracking-widest">Solve</span>
-                  </div>
-                )}
-                <Zap className="text-slate-800 group-hover:text-cyan-400 group-hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] transition-all" size={28} />
-              </div>
-            </NavLink>
-          ))}
+                {/* Right Side: Dynamic Status Tag */}
+                <div className="flex items-center gap-8">
+                  {problem.isSolved ? (
+                    <div className="flex items-center gap-3 px-6 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                       <CheckCircle2 className="text-emerald-400" size={16} />
+                       <span className="text-[15px] font-black text-emerald-400 uppercase tracking-widest">Solved</span>
+                    </div>
+                  ) : (
+                    <div className="px-6 py-2 bg-white/5 border border-white/10 rounded-xl group-hover:border-cyan-500/30 transition-all">
+                       <span className="text-[15px] font-black text-slate-500 group-hover:text-white uppercase tracking-widest">Solve</span>
+                    </div>
+                  )}
+                  <Zap className="text-slate-800 group-hover:text-cyan-400 group-hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] transition-all" size={28} />
+                </div>
+              </NavLink>
+            );
+          })}
 
-          {filteredProblems.length === 0 && (
+          {paginatedProblems.length === 0 && (
             <div className="text-center py-32 bg-white/1 border border-dashed border-white/10 rounded-[3rem]">
               <p className="text-slate-500 font-mono text-sm uppercase tracking-[0.28em] animate-pulse">No problems found for selected filters</p>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {totalProblems > 0 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-sm text-slate-400">Showing {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, totalProblems)} of {totalProblems}</div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 rounded-md bg-black/40 border border-white/10 text-sm disabled:opacity-40"
+                >Prev</button>
+
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`px-3 py-2 rounded-md text-sm ${currentPage === i + 1 ? 'bg-cyan-600 text-white' : 'bg-black/40 border border-white/10 text-slate-300'}`}
+                  >{i + 1}</button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-2 rounded-md bg-black/40 border border-white/10 text-sm disabled:opacity-40"
+                >Next</button>
+              </div>
             </div>
           )}
         </div>

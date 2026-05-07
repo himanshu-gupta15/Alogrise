@@ -41,6 +41,8 @@ const AdminDelete = () => {
     p.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const formatTags = (tags) => (Array.isArray(tags) ? tags.join(', ') : String(tags || ''));
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex flex-col justify-center items-center">
@@ -134,7 +136,7 @@ const AdminDelete = () => {
 
               <div className="col-span-2">
                 <span className="text-[10px] font-mono text-slate-500 bg-white/5 px-2 py-1 rounded">
-                  {problem.tags}
+                  {formatTags(problem.tags)}
                 </span>
               </div>
 

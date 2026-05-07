@@ -9,6 +9,8 @@ const AdminVideo = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const formatTags = (tags) => (Array.isArray(tags) ? tags.join(', ') : String(tags || ''));
+
   useEffect(() => {
     fetchProblems();
   }, []);
@@ -106,7 +108,7 @@ const AdminVideo = () => {
                     }`}>
                       {problem.difficulty}
                     </span>
-                    <span className="text-[9px] font-mono text-slate-500 uppercase tracking-tighter">{problem.tags}</span>
+                    <span className="text-[9px] font-mono text-slate-500 uppercase tracking-tighter">{formatTags(problem.tags)}</span>
                   </div>
                 </div>
               </div>

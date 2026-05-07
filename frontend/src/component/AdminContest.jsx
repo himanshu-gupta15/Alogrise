@@ -18,6 +18,8 @@ const AdminContest = () => {
     maxParticipants: 500,
   });
 
+  const formatTags = (tags) => (Array.isArray(tags) ? tags.join(', ') : String(tags || ''));
+
   useEffect(() => {
     const loadProblems = async () => {
       try {
@@ -37,7 +39,7 @@ const AdminContest = () => {
     const needle = query.trim().toLowerCase();
     if (!needle) return problems;
     return problems.filter((problem) => {
-      return [problem.title, problem.difficulty, problem.tags]
+      return [problem.title, problem.difficulty, formatTags(problem.tags)]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(needle));
     });
@@ -212,7 +214,7 @@ const AdminContest = () => {
                         <div>
                           <h3 className="font-black">{problem.title}</h3>
                           <p className="text-xs uppercase tracking-widest text-slate-500">
-                            {problem.difficulty} • {problem.tags}
+                            {problem.difficulty} • {formatTags(problem.tags)}
                           </p>
                         </div>
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">

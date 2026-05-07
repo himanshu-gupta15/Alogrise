@@ -264,7 +264,7 @@ import { Code2, Beaker, FileText, Plus, Trash2, ShieldCheck, EyeOff, Sparkles, L
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(1, 'Description is required'),
   difficulty: z.enum(['easy', 'medium', 'hard']),
-  tags: z.enum(['array', 'linkedList', 'graph', 'dp']),
+  tagsCsv: z.string().min(1, 'At least one topic is required'),
   companiesCsv: z.string().optional(),
   visibleTestCases: z.array(
     z.object({
@@ -326,10 +326,14 @@ function AdminPanel() {
   };
 
   const normalizeProblemPayload = (data) => {
-    const { companiesCsv, ...rest } = data;
+    const { companiesCsv, tagsCsv, ...rest } = data;
 
     return {
       ...rest,
+      tags: (tagsCsv || '')
+        .split(/[,\n]/)
+        .map((tag) => tag.trim().toLowerCase())
+        .filter(Boolean),
       companies: (companiesCsv || '')
         .split(/[,\n]/)
         .map((company) => company.trim())
@@ -428,13 +432,14 @@ function AdminPanel() {
                     </select>
                 </div>
                 <div className="space-y-3">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Category_Tag</label>
-                    <select {...register('tags')} className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-black uppercase tracking-widest outline-none appearance-none cursor-pointer focus:border-cyan-500">
-                        <option value="array">ARRAY</option>
-                        <option value="linkedList">LINKED_LIST</option>
-                        <option value="graph">GRAPH</option>
-                        <option value="dp">DYN_PROG</option>
-                    </select>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Topics (Multiple)</label>
+                      <textarea
+                        {...register('tagsCsv')}
+                        rows={3}
+                        placeholder="array, two pointers, sliding window"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 font-mono text-sm leading-relaxed focus:border-cyan-500 outline-none transition-all resize-none placeholder:text-slate-700"
+                      />
+                      {errors.tagsCsv && <p className="text-rose-500 text-[10px] font-bold uppercase tracking-widest mt-2">{errors.tagsCsv.message}</p>}
                 </div>
               </div>
 
