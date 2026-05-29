@@ -307,6 +307,18 @@ const Navbar = () => {
                       View Profile
                     </button>
                     <button
+                      onClick={() => navigate('/create-problem')}
+                      className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-300 transition hover:bg-white/5 hover:text-cyan-300"
+                    >
+                      Contribute to Create a New  Problem
+                    </button>
+                    <button
+                      onClick={() => navigate('/my-problems')}
+                      className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-300 transition hover:bg-white/5 hover:text-cyan-300"
+                    >
+                      My Publish Problem
+                    </button>
+                    <button
                       onClick={handleLogout}
                       className="block w-full rounded-lg px-3 py-2 text-left text-sm text-red-400 transition hover:bg-red-500/10"
                     >
@@ -379,6 +391,12 @@ const Navbar = () => {
                 </NavLink>
                 <NavLink to="/profile" className={navClass}>
                   Profile
+                </NavLink>
+                <NavLink to="/create-problem" className={navClass}>
+                  Submit Problem
+                </NavLink>
+                <NavLink to="/my-problems" className={navClass}>
+                  My Submissions
                 </NavLink>
                 <button onClick={handleLogout} className="mt-2 w-fit rounded-lg px-3 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/10">
                   Log Out

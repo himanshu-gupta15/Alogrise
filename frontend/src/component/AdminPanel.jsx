@@ -256,7 +256,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import axiosClient from '../utils/axiosClient';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { Code2, Beaker, FileText, Plus, Trash2, ShieldCheck, EyeOff, Sparkles, Layers } from 'lucide-react';
 
 // ... (Keep the problemSchema and defaultValues the same as your provided code)
@@ -295,6 +295,7 @@ import { Code2, Beaker, FileText, Plus, Trash2, ShieldCheck, EyeOff, Sparkles, L
 
 function AdminPanel() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { register, control, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(problemSchema),
     defaultValues: {
@@ -364,10 +365,18 @@ function AdminPanel() {
     try {
       console.log("Submitting Data:", data); // Debug log
       const payload = { ...normalizeProblemPayload(data), skipJudge: true };
+      if (location.pathname.startsWith('/admin')) {
+        payload.status = 'approved';
+      }
       const resp = await axiosClient.post('/problem/create', payload);
       console.log('Server response:', resp);
-      alert('RECON_SYNC: Problem successfully initialized in the grid.');
-      navigate('/');
+      if (payload.status === 'approved') {
+        alert('Problem published successfully.');
+        navigate('/admin');
+      } else {
+        alert('Problem submitted successfully. It is now pending admin review.');
+        navigate('/my-problems');
+      }
     } catch (error) {
       console.error('Submit error response:', error.response || error);
       const status = error.response?.status;
@@ -386,13 +395,24 @@ function AdminPanel() {
         
         {/* Animated Header */}
         <div className="mb-16 border-l-4 border-cyan-500 pl-8 animate-in slide-in-from-left duration-700">
-          <div className="flex items-center gap-2 text-cyan-400 font-mono text-[10px] tracking-[0.5em] uppercase mb-2">
+          {/* <div className="flex items-center gap-2 text-cyan-400 font-mono text-[10px] tracking-[0.5em] uppercase mb-2">
              <Layers size={14} /> System Architect / Forge_01
-          </div>
-          <h1 className="text-6xl font-black tracking-tighter uppercase italic leading-none">
-            New <span className="text-slate-600">Problem</span> <br /> 
-            Deployment
+          </div> */}
+          <h1 className="text-6xl font-black tracking-tighter uppercase  leading-none">
+            Contribute to Create a new <span className="text-slate-600">Problem</span> <br /> 
+           
           </h1>
+        </div>
+
+        <div className="mb-10 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-5">
+          <p className="text-cyan-300 text-xs font-black uppercase tracking-[0.2em] mb-3">Submission Format Guide</p>
+          <ul className="list-disc ml-5 space-y-2 text-sm text-slate-300">
+            <li><span className="font-semibold text-white">Title:</span> Short and clear, e.g. <span className="font-mono">Two Sum</span>.</li>
+            <li><span className="font-semibold text-white">Description:</span> Use sections like Problem, Input Format, Output Format, Constraints, Example.</li>
+            <li><span className="font-semibold text-white">Testcases:</span> Use exact input/output text. Multi-line input is allowed.</li>
+            <li><span className="font-semibold text-white">Topics:</span> Separate by comma/new line, e.g. <span className="font-mono">array, hash map</span>.</li>
+            <li><span className="font-semibold text-white">Code:</span> Keep starter and reference solution complete for all 3 languages.</li>
+          </ul>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit, (errs) => { console.log('Validation errors:', errs); alert('Validation error: please check required fields.'); })} className="space-y-16 max-w-5xl">
@@ -419,7 +439,12 @@ function AdminPanel() {
 
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Logic brief (Description)</label>
-                <textarea {...register('description')} rows={6} className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 font-mono text-sm leading-relaxed focus:border-cyan-500 outline-none transition-all resize-none" />
+                <textarea
+                  {...register('description')}
+                  rows={10}
+                  placeholder={`Problem: Given an array nums and a target, return indices of two numbers...\n\nInput Format:\n- nums: integer array\n- target: integer\n\nOutput Format:\n- indices i and j\n\nConstraints:\n- 2 <= n <= 1e5\n\nExample:\nInput: nums = [2,7,11,15], target = 9\nOutput: [0,1]`}
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 font-mono text-sm leading-relaxed focus:border-cyan-500 outline-none transition-all resize-none"
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -482,9 +507,9 @@ function AdminPanel() {
                             <Trash2 size={16} />
                         </button>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                            <input {...register(`visibleTestCases.${index}.input`)} placeholder="Standard Input" className="bg-black/60 border border-white/5 rounded-xl p-4 text-sm focus:border-cyan-500 outline-none font-mono" />
-                            <input {...register(`visibleTestCases.${index}.output`)} placeholder="Expected Output" className="bg-black/60 border border-white/5 rounded-xl p-4 text-sm focus:border-cyan-500 outline-none font-mono" />
-                            <textarea {...register(`visibleTestCases.${index}.explanation`)} placeholder="Why is this the output? (Visible to user)" className="md:col-span-2 bg-black/60 border border-white/5 rounded-xl p-4 text-sm focus:border-cyan-500 outline-none h-24" />
+                            <input {...register(`visibleTestCases.${index}.input`)} placeholder="Standard Input (e.g. 4\n2 7 11 15\n9)" className="bg-black/60 border border-white/5 rounded-xl p-4 text-sm focus:border-cyan-500 outline-none font-mono" />
+                            <input {...register(`visibleTestCases.${index}.output`)} placeholder="Expected Output (e.g. 0 1 or [0,1])" className="bg-black/60 border border-white/5 rounded-xl p-4 text-sm focus:border-cyan-500 outline-none font-mono" />
+                            <textarea {...register(`visibleTestCases.${index}.explanation`)} placeholder="Explain how output is derived from this input" className="md:col-span-2 bg-black/60 border border-white/5 rounded-xl p-4 text-sm focus:border-cyan-500 outline-none h-24" />
                         </div>
                     </div>
                 ))}
@@ -496,8 +521,8 @@ function AdminPanel() {
                             <Trash2 size={16} />
                         </button>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                            <input {...register(`hiddenTestCases.${index}.input`)} placeholder="Edge Case Input" className="bg-black/60 border border-white/5 rounded-xl p-4 text-sm focus:border-rose-500 outline-none font-mono text-rose-200" />
-                            <input {...register(`hiddenTestCases.${index}.output`)} placeholder="Edge Case Output" className="bg-black/60 border border-white/5 rounded-xl p-4 text-sm focus:border-rose-500 outline-none font-mono text-rose-200" />
+                            <input {...register(`hiddenTestCases.${index}.input`)} placeholder="Edge Case Input (multi-line allowed)" className="bg-black/60 border border-white/5 rounded-xl p-4 text-sm focus:border-rose-500 outline-none font-mono text-rose-200" />
+                            <input {...register(`hiddenTestCases.${index}.output`)} placeholder="Edge Case Expected Output" className="bg-black/60 border border-white/5 rounded-xl p-4 text-sm focus:border-rose-500 outline-none font-mono text-rose-200" />
                         </div>
                     </div>
                 ))}
@@ -555,10 +580,10 @@ function AdminPanel() {
 
           {/* Final Submit Button */}
           <div className="relative group/btn pt-10">
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 to-purple-600 rounded-3xl blur-xl opacity-20 group-hover/btn:opacity-60 transition duration-1000 pointer-events-none"></div>
-            <button type="submit" className="relative z-10 w-full py-8 bg-black rounded-[2rem] border border-white/10 flex items-center justify-center gap-4 transition-all active:scale-[0.98] group-hover/btn:border-white/20">
+            <div className="absolute -inset-1 bg-linear-to-r from-cyan-600 to-purple-600 rounded-3xl blur-xl opacity-20 group-hover/btn:opacity-60 transition duration-1000 pointer-events-none"></div>
+            <button type="submit" className="relative z-10 w-full py-8 bg-black rounded-4xl border border-white/10 flex items-center justify-center gap-4 transition-all active:scale-[0.98] group-hover/btn:border-white/20">
               <ShieldCheck size={28} className="text-emerald-400" />
-              <span className="text-xl font-black tracking-[0.4em] uppercase italic text-white">Initialize Deployment</span>
+              <span className="text-xl font-black tracking-[0.4em] uppercase text-white">Initialize Deployment</span>
               <Sparkles size={20} className="text-purple-400 animate-pulse" />
             </button>
           </div>

@@ -65,7 +65,7 @@ const AdminVideo = () => {
               <Film className="text-cyan-400" size={20} />
               <h2 className="text-cyan-400 font-mono text-xs tracking-[0.4em] uppercase">Asset Manager v1.0</h2>
             </div>
-            <h1 className="text-5xl font-black tracking-tighter uppercase italic">
+            <h1 className="text-5xl font-black tracking-tighter uppercase">
               Video <span className="text-slate-600">Repository</span>
             </h1>
           </div>

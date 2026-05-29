@@ -496,7 +496,7 @@ function AdminUpload() {
             <div className="inline-flex p-4 bg-cyan-500/10 rounded-2xl mb-4 border border-cyan-500/20 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
               <CloudUpload className="text-cyan-400" size={32} />
             </div>
-            <h2 className="text-3xl font-black tracking-tighter uppercase italic">Media <span className="text-cyan-400">Uplink</span></h2>
+            <h2 className="text-3xl font-black tracking-tighter uppercase">Media <span className="text-cyan-400">Uplink</span></h2>
             <p className="text-slate-500 text-[10px] mt-2 uppercase tracking-[0.3em] font-mono">Channel ID: {problemId}</p>
           </div>
 
@@ -512,7 +512,7 @@ function AdminUpload() {
                     {selectedFile ? selectedFile.name : "Select Asset for Transmission"}
                   </p>
                   {selectedFile && <p className="text-[10px] text-cyan-500 mt-2 font-mono uppercase">{formatFileSize(selectedFile.size)}</p>}
-                  {!selectedFile && <p className="text-[10px] text-slate-500 mt-2 uppercase tracking-widest font-mono italic">MAX PAYLOAD: 100MB</p>}
+                  {!selectedFile && <p className="text-[10px] text-slate-500 mt-2 uppercase tracking-widest font-mono">MAX PAYLOAD: 100MB</p>}
                 </div>
                 
                 <input

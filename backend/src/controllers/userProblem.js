@@ -130,16 +130,40 @@ const createProblem = async (req, res) => {
       return res.status(400).send("At least one topic is required");
     }
 
+    // Determine status: admin problems are auto-approved, user problems are pending
+    const isAdmin = req.result.role === 'admin';
+    const status = isAdmin ? 'approved' : 'pending';
+
     await Problem.create({
       ...req.body,
       tags: normalizedTags,
       companies: normalizeCompanies(req.body.companies),
       problemCreator: req.result._id,
+      status: status,
     });
 
     res.status(201).send("Problem Saved Successfully");
   } catch (err) {
     res.status(400).send("Error: " + err);
+  }
+};
+
+const getUserProblems = async (req, res) => {
+  try {
+    const userId = req.result._id;
+    const problems = await Problem.find({ problemCreator: userId }).select("_id title difficulty tags status createdAt");
+    res.status(200).send(problems);
+  } catch (err) {
+    res.status(500).send('Error: ' + err);
+  }
+};
+
+const getPendingProblems = async (req, res) => {
+  try {
+    const problems = await Problem.find({ status: 'pending' }).select("_id title difficulty tags problemCreator createdAt").populate('problemCreator','name email');
+    res.status(200).send(problems);
+  } catch (err) {
+    res.status(500).send('Error: ' + err);
   }
 };
 
@@ -185,8 +209,16 @@ const deleteProblem = async (req, res) => {
 const getProblemById = async (req, res) => {
   const { id } = req.params;
   try {
-    const getProblem = await Problem.findById(id).select("_id title description difficulty tags companies visibleTestCases startCode referenceSolution ");
+    const getProblem = await Problem.findById(id).select("_id title description difficulty tags companies visibleTestCases startCode referenceSolution status problemCreator");
     if (!getProblem) return res.status(404).send("Problem is Missing");
+
+    const isAdmin = req.result?.role === "admin";
+    const isCreator = getProblem.problemCreator?.toString() === req.result?._id?.toString();
+    // Legacy problems (created before status field) have no status field, treat as published
+    const isPublished = getProblem.status === "approved" || getProblem.status == null || getProblem.status === undefined;
+    if (!isAdmin && !isCreator && !isPublished) {
+      return res.status(403).send("Problem is not published yet");
+    }
 
     const videos = await SolutionVideo.findOne({ problemId: id });
     const responseData = videos
@@ -201,8 +233,10 @@ const getProblemById = async (req, res) => {
 
 const getAllProblem = async (req, res) => {
   try {
-    const problems = await Problem.find({}).select("_id title difficulty tags");
-    if (!problems || problems.length === 0) return res.status(404).send("Problem is Missing");
+    const isAdmin = req.result?.role === "admin";
+    const filter = isAdmin ? {} : { $or: [{ status: "approved" }, { status: { $exists: false } }, { status: null }] };
+    const problems = await Problem.find(filter).select("_id title difficulty tags status");
+    if (!problems || problems.length === 0) return res.status(200).send([]);
 
     const userId = req.result?._id;
     let solvedProblemIds = new Set();
@@ -230,7 +264,7 @@ const solvedAllProblembyUser = async (req, res) => {
 
     if (!solvedProblemIds || solvedProblemIds.length === 0) return res.status(200).send([]);
 
-    const solvedProblems = await Problem.find({ _id: { $in: solvedProblemIds } }).select("_id title difficulty tags");
+    const solvedProblems = await Problem.find({ _id: { $in: solvedProblemIds }, $or: [{ status: "approved" }, { status: { $exists: false } }, { status: null }] }).select("_id title difficulty tags status");
     res.status(200).send(solvedProblems);
   } catch (err) {
     res.status(500).send("Server Error");
@@ -250,4 +284,4 @@ const submittedProblem = async (req, res) => {
   }
 };
 
-export { createProblem, updateProblem, deleteProblem, getProblemById, getAllProblem, solvedAllProblembyUser, submittedProblem, handleStreakAndSolved };
+export { createProblem, updateProblem, deleteProblem, getProblemById, getAllProblem, solvedAllProblembyUser, submittedProblem, handleStreakAndSolved, getUserProblems, getPendingProblems };

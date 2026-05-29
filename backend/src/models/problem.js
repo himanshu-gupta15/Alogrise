@@ -83,6 +83,12 @@ const problemSchema=new Schema({
             ref:'user',
             required:true
         }
+        ,
+        status: {
+            type: String,
+            enum: ['pending', 'approved', 'rejected'],
+            default: 'pending'
+        }
     })
     
     

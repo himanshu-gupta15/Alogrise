@@ -67,7 +67,7 @@ const AdminDelete = () => {
               <ShieldAlert className="text-rose-500 animate-pulse" size={20} />
               <h2 className="text-rose-500 font-mono text-xs tracking-[0.4em] uppercase">Security Level: Admin</h2>
             </div>
-            <h1 className="text-6xl font-black tracking-tighter uppercase italic">
+            <h1 className="text-6xl font-black tracking-tighter uppercase">
               Purge <span className="text-slate-600">Database</span>
             </h1>
           </div>
@@ -153,7 +153,7 @@ const AdminDelete = () => {
 
           {filteredProblems.length === 0 && (
             <div className="text-center py-20 border-2 border-dashed border-white/5 rounded-3xl">
-              <p className="text-slate-600 italic font-mono uppercase tracking-widest">No matching resources found in registry</p>
+              <p className="text-slate-600 font-mono uppercase tracking-widest">No matching resources found in registry</p>
             </div>
           )}
         </div>

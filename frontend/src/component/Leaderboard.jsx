@@ -60,7 +60,7 @@ const Leaderboard = () => {
               >
                 <div className="flex items-center gap-6">
                   {/* Rank Number */}
-                  <div className={`w-10 text-xl font-black italic ${style.text}`}>
+                  <div className={`w-10 text-xl font-black ${style.text}`}>
                     #{index + 1}
                   </div>
 
@@ -72,7 +72,7 @@ const Leaderboard = () => {
                   {/* Identity */}
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="font-black uppercase tracking-tight text-white italic">{player.firstName} {player.lastName}</p>
+                      <p className="font-black uppercase tracking-tight text-white">{player.firstName} {player.lastName}</p>
                       {style.icon}
                       {isMe && <span className="bg-cyan-500 text-black text-[8px] font-black px-2 py-0.5 rounded uppercase">You</span>}
                     </div>
@@ -89,9 +89,9 @@ const Leaderboard = () => {
                   </div>
                   <div className="text-right min-w-20">
                     <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1 flex items-center justify-end gap-1">
-                      <Target size={10} className="text-cyan-500" /> XP_Level
+                      <Target size={10} className="text-cyan-500" /> Score
                     </p>
-                    <p className="text-xl font-black text-cyan-400 italic">{player.xp || 0}</p>
+                    <p className="text-xl font-black text-cyan-400">{player.xp || 0}</p>
                   </div>
                 </div>
               </div>

@@ -85,7 +85,7 @@ const AdminContest = () => {
           <div className="mb-2 flex items-center gap-2 text-cyan-400 text-[10px] font-mono uppercase tracking-[0.5em]">
             <ShieldCheck size={14} /> Admin / Contest Builder
           </div>
-          <h1 className="text-5xl font-black tracking-tighter uppercase italic">Create Contest</h1>
+          <h1 className="text-5xl font-black tracking-tighter uppercase">Create Contest</h1>
           <p className="mt-3 max-w-2xl text-sm text-slate-400">
             Build a timed contest, attach problems, and publish it to the contest arena.
           </p>

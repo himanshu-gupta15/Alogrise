@@ -153,9 +153,9 @@ const HomePage = () => {
         <div className={`flex-1 space-y-8 transition-all duration-1000 transform ${isVisible ? 'translate-x-0 opacity-100' : '-translate-x-20 opacity-0'}`}>
           <div className="space-y-4">
             <h1 className="text-4xl md:text-6xl font-black leading-tight">
-              Build elite <span className="bg-linear-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent italic">problem-solving skills.</span>
+              Build elite <span className="bg-linear-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">problem-solving skills.</span>
             </h1>
-            <p className="text-lg md:text-xl text-slate-400 max-w-lg leading-relaxed italic border-l-2 border-cyan-500/30 pl-4">
+            <p className="text-lg md:text-xl text-slate-400 max-w-lg leading-relaxed border-l-2 border-cyan-500/30 pl-4">
               "From interview prep to competitive coding, <span className="text-white font-bold">ALGORISE</span> gives you the structure to improve every day."
             </p>
           </div>
@@ -176,11 +176,11 @@ const HomePage = () => {
 
           <div className="flex gap-10 pt-8 border-t border-white/5 font-mono">
             <div>
-              <p className="text-3xl font-black text-white italic">500+</p>
+              <p className="text-3xl font-black text-white">500+</p>
               <p className="text-[10px] text-slate-500 uppercase font-bold tracking-[0.3em]">Problems</p>
             </div>
             <div>
-              <p className="text-3xl font-black text-white italic">10k+</p>
+              <p className="text-3xl font-black text-white">10k+</p>
               <p className="text-[10px] text-slate-500 uppercase font-bold tracking-[0.3em]">Active Learners</p>
             </div>
           </div>
@@ -261,7 +261,7 @@ const HomePage = () => {
           <div className="space-y-4">
             {testimonials.map((item) => (
               <div key={item.name} className="rounded-2xl border border-white/10 bg-white/2 p-6">
-                <p className="text-slate-300 italic">“{item.quote}”</p>
+                <p className="text-slate-300">“{item.quote}”</p>
                 <p className="text-xs tracking-widest uppercase text-cyan-400 mt-4 font-bold">{item.name}</p>
               </div>
             ))}

@@ -235,6 +235,7 @@ import Registration from "./pages/RegistrationForm";
 import Signin from "./pages/SignIn";
 import ProblemPage from "./pages/ProblemPage";
 import ProblemPractice from "./component/ProblemPractice";
+import MyProblems from "./pages/MyProblems";
 
 // Admin Components
 import Admin from "./pages/Admin";
@@ -328,6 +329,8 @@ function App() {
         <Route path="/contest" element={<ProtectedRoute><Contest /></ProtectedRoute>} />
         <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
         <Route path="/problem/:problemId" element={<ProtectedRoute><ProblemPage /></ProtectedRoute>} />
+        <Route path="/my-problems" element={<ProtectedRoute><MyProblems /></ProtectedRoute>} />
+        <Route path="/create-problem" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
 
         {/* ================= ADMIN ROUTES ================= */}
         <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />

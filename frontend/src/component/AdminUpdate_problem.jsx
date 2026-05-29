@@ -81,7 +81,7 @@ function AdminUpdate_problem() {
           <div className="flex items-center gap-2 text-purple-400 font-mono text-[10px] tracking-[0.4em] uppercase mb-2">
             <Layers size={12} /> Revision Interface / {id.slice(-6)}
           </div>
-          <h1 className="text-6xl font-black tracking-tighter uppercase italic text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-500">
+          <h1 className="text-6xl font-black tracking-tighter uppercase text-transparent bg-clip-text bg-linear-to-r from-white to-slate-500">
             Update <span className="text-purple-500">Protocol</span>
           </h1>
         </div>
@@ -198,7 +198,7 @@ function AdminUpdate_problem() {
               ) : (
                 <>
                   <ShieldCheck size={24} className="text-emerald-400" />
-                  <span className="text-sm font-black tracking-[0.4em] uppercase italic text-white">Commit Changes to Production</span>
+                  <span className="text-sm font-black tracking-[0.4em] uppercase text-white">Commit Changes to Production</span>
                   <Sparkles size={20} className="text-purple-500" />
                 </>
               )}

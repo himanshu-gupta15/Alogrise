@@ -83,7 +83,7 @@ if (Array.isArray(data)) {
                     </span>
                     <span className="text-sm font-bold text-white uppercase tracking-tight">{sub.language}</span>
                   </div>
-                  <p className="text-[10px] text-slate-500 font-mono italic">{formatDate(sub.createdAt)}</p>
+                  <p className="text-[10px] text-slate-500 font-mono">{formatDate(sub.createdAt)}</p>
                 </div>
               </div>
 
@@ -156,7 +156,7 @@ if (Array.isArray(data)) {
             {selectedSubmission.errorMessage && (
               <div className="p-6 bg-rose-500/10 border-t border-rose-500/20">
                 <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-2">Debugger Output</p>
-                <p className="text-xs font-mono text-rose-300 italic">{selectedSubmission.errorMessage}</p>
+                <p className="text-xs font-mono text-rose-300">{selectedSubmission.errorMessage}</p>
               </div>
             )}
           </div>
