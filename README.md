@@ -4,6 +4,12 @@ A full-stack MERN application for competitive programming where users can solve 
 
 ---
 
+## 🎓 Interview Preparation
+Are you preparing this project for job interviews? We have created a comprehensive, deep-dive interview preparation guide covering architecture, key system designs, technical challenges (like the Stripe state persistence fix), database schemas, and expected questions:
+👉 **[Interview Preparation & Project Deep-Dive Guide (INTERVIEW_PREP.md)](file:///Users/himanshugupta/Desktop/web-dev/mern/major_project/ALGORISE/INTERVIEW_PREP.md)**
+
+---
+
 ## 📋 Table of Contents
 
 1. [Overview](#overview)

@@ -9,7 +9,10 @@ import {
   Zap,
   Terminal,
   Search,
-  LayoutList
+  LayoutList,
+  Building2,
+  Sparkles,
+  X
 } from 'lucide-react';
 
 /* ================= COMPONENT ================= */
@@ -30,6 +33,15 @@ function ProblemPractice() {
     difficulty: 'all',
     tag: 'all',
     status: 'all'
+  });
+
+  const [activePack, setActivePack] = useState(() => {
+    const saved = localStorage.getItem('activePack');
+    try {
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
   });
 
   const [purchaseNotice, setPurchaseNotice] = useState(null);
@@ -58,6 +70,19 @@ function ProblemPractice() {
           const { data } = await axiosClient.post('/payment/confirm', { sessionId });
           if (data?.purchase) {
             setPurchaseNotice({ type: 'success', message: 'Purchase successful. Pack unlocked.' });
+            if (pack) {
+              try {
+                const { data: packsList } = await axiosClient.get('/interview/packs');
+                const matchedPack = packsList.find(p => p.packId === pack);
+                if (matchedPack) {
+                  const active = { id: matchedPack.packId, company: matchedPack.company, role: matchedPack.role };
+                  localStorage.setItem('activePack', JSON.stringify(active));
+                  setActivePack(active);
+                }
+              } catch (err) {
+                console.error('Failed to auto-start purchased pack', err);
+              }
+            }
           } else {
             setPurchaseNotice({ type: 'error', message: data?.error || 'Purchase could not be confirmed.' });
           }
@@ -101,6 +126,12 @@ function ProblemPractice() {
   /* ================= FILTERING LOGIC ================= */
 
   const filteredProblems = problems.filter((problem) => {
+    if (activePack && activePack.company) {
+      const pCompanies = Array.isArray(problem.companies) ? problem.companies : [];
+      const hasCompany = pCompanies.some(c => c.toLowerCase() === activePack.company.toLowerCase());
+      if (!hasCompany) return false;
+    }
+
     // 1. Difficulty Match
     const difficultyMatch =
       filters.difficulty === 'all' ||
@@ -180,6 +211,42 @@ function ProblemPractice() {
         {purchaseNotice && (
           <div className={`mb-6 rounded-2xl border px-4 py-3 text-sm ${purchaseNotice.type === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : purchaseNotice.type === 'info' ? 'border-cyan-400/30 bg-cyan-500/8 text-cyan-200' : 'border-rose-500/30 bg-rose-500/10 text-rose-200'}`}>
             {purchaseNotice.message}
+          </div>
+        )}
+
+        {activePack && (
+          <div className="mb-8 p-6 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-pink-500/10 backdrop-blur-2xl rounded-4xl border border-amber-500/30 shadow-2xl relative overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="absolute top-0 right-0 h-40 w-40 rounded-full bg-amber-500/5 blur-3xl pointer-events-none"></div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+              <div className="flex items-center gap-4">
+                <div className="rounded-2xl bg-amber-500/20 border border-amber-400/30 p-3 text-amber-300">
+                  <Building2 size={24} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-black uppercase tracking-[0.2em] text-amber-400">Mock Assessment Mode</span>
+                    <span className="flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300 border border-amber-500/30 animate-pulse">
+                      <Sparkles size={10} /> Active
+                    </span>
+                  </div>
+                  <h3 className="text-2xl font-black text-white mt-1 uppercase tracking-tight">
+                    {activePack.company} <span className="text-slate-400 text-lg font-medium tracking-normal lowercase first-letter:uppercase">({activePack.role})</span>
+                  </h3>
+                  <p className="text-sm text-slate-400 mt-1">
+                    Showing only problems matching <strong className="text-amber-300">{activePack.company}</strong> interview patterns.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  localStorage.removeItem('activePack');
+                  setActivePack(null);
+                }}
+                className="inline-flex items-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-5 py-3 text-sm font-black uppercase tracking-widest text-rose-200 transition hover:bg-rose-500/20 hover:border-rose-400/50"
+              >
+                <X size={15} /> Exit Mode
+              </button>
+            </div>
           </div>
         )}
 

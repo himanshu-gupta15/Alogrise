@@ -235,7 +235,7 @@ const getAllProblem = async (req, res) => {
   try {
     const isAdmin = req.result?.role === "admin";
     const filter = isAdmin ? {} : { $or: [{ status: "approved" }, { status: { $exists: false } }, { status: null }] };
-    const problems = await Problem.find(filter).select("_id title difficulty tags status");
+    const problems = await Problem.find(filter).select("_id title difficulty tags status companies");
     if (!problems || problems.length === 0) return res.status(200).send([]);
 
     const userId = req.result?._id;

@@ -149,14 +149,20 @@ function Interview() {
                 <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-emerald-300" /> Success rate: {track.successRate}%</p>
               </div>
 
-              <button className="mt-6 rounded-xl border border-amber-300/40 bg-amber-300/10 px-6 py-2 text-sm font-bold text-amber-200 transition hover:bg-amber-300/20">
+              <button
+                onClick={() => {
+                  setActiveTab(track.type);
+                  document.getElementById("company-packs-section")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="mt-6 rounded-xl border border-amber-300/40 bg-amber-300/10 px-6 py-2 text-sm font-bold text-amber-200 transition hover:bg-amber-300/20"
+              >
                 Start
               </button>
             </div>
           ))}
         </div>
 
-        <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div id="company-packs-section" className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap gap-2">
             {tabs.map((tab) => (
               <button
@@ -227,7 +233,7 @@ function Interview() {
                   </p>
                 </div>
 
-                {item.isPremium ? (
+                {item.isPremium && !item.isPurchased ? (
                   <button
                     disabled={checkoutLoading === item.packId}
                     onClick={async () => {
@@ -256,7 +262,7 @@ function Interview() {
                 ) : (
                   <button
                     onClick={() => {
-                      // free pack -> direct start (store pack and navigate)
+                      // free pack or purchased pack -> direct start (store pack and navigate)
                       localStorage.setItem('activePack', JSON.stringify({ id: item.packId, company: item.company, role: item.role }));
                       window.location.href = '/practice';
                     }}

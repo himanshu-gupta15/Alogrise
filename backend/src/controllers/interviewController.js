@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import InterviewPack from "../models/interviewPack.js";
+import Purchase from "../models/purchase.js";
 
 const normalizePayload = (body = {}) => {
   const payload = { ...body };
@@ -98,14 +99,26 @@ const getAdminInterviewPacks = async (_req, res) => {
   }
 };
 
-const getPublicInterviewPacks = async (_req, res) => {
+const getPublicInterviewPacks = async (req, res) => {
   try {
     const packs = await InterviewPack.find({ isActive: true })
       .select("packId company role type sets attempted successRate isPremium priceInCents currency description")
       .sort({ isPremium: 1, attempted: -1 })
       .lean();
 
-    return res.status(200).json(packs);
+    const userId = req.result?._id;
+    let purchasedPackIds = new Set();
+    if (userId) {
+      const purchases = await Purchase.find({ userId, paid: true }).select("packId").lean();
+      purchasedPackIds = new Set(purchases.map(p => p.packId));
+    }
+
+    const packsWithPurchaseInfo = packs.map((pack) => ({
+      ...pack,
+      isPurchased: purchasedPackIds.has(pack.packId),
+    }));
+
+    return res.status(200).json(packsWithPurchaseInfo);
   } catch (error) {
     return res.status(500).json({ error: "Failed to fetch interview packs", details: error.message });
   }
