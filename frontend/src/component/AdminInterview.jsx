@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Plus, Save, Trash2, Edit3, ShieldCheck } from "lucide-react";
+import React, { useEffect, useState, useMemo } from "react";
+import { Plus, Save, Trash2, Edit3, ShieldCheck, Search } from "lucide-react";
 import axiosClient from "../utils/axiosClient";
 
 const defaultForm = {
@@ -7,7 +7,7 @@ const defaultForm = {
   company: "",
   role: "",
   type: "online",
-  sets: 10,
+  problems: [],
   attempted: 0,
   successRate: 0,
   isPremium: false,
@@ -19,10 +19,13 @@ const defaultForm = {
 
 function AdminInterview() {
   const [packs, setPacks] = useState([]);
+  const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingProblems, setLoadingProblems] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [form, setForm] = useState(defaultForm);
+  const [problemQuery, setProblemQuery] = useState("");
 
   const loadPacks = async () => {
     try {
@@ -35,22 +38,48 @@ function AdminInterview() {
     }
   };
 
+  const loadProblems = async () => {
+    try {
+      const { data } = await axiosClient.get("/problem/getAllProblem");
+      setProblems(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Failed to load problems", error);
+    } finally {
+      setLoadingProblems(false);
+    }
+  };
+
   useEffect(() => {
     loadPacks();
+    loadProblems();
   }, []);
+
+  const filteredProblems = useMemo(() => {
+    const needle = problemQuery.trim().toLowerCase();
+    if (!needle) return problems;
+    return problems.filter((problem) =>
+      problem.title.toLowerCase().includes(needle) ||
+      (problem.difficulty && problem.difficulty.toLowerCase().includes(needle))
+    );
+  }, [problems, problemQuery]);
 
   const resetForm = () => {
     setForm(defaultForm);
     setEditingId("");
+    setProblemQuery("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (form.problems.length === 0) {
+      alert("Please select at least one problem for the interview pack.");
+      return;
+    }
     try {
       setSaving(true);
       const payload = {
         ...form,
-        sets: Number(form.sets) || 1,
+        sets: form.problems.length,
         attempted: Number(form.attempted) || 0,
         successRate: Number(form.successRate) || 0,
         priceInCents: form.isPremium ? Number(form.priceInCents) || 0 : 0,
@@ -79,7 +108,7 @@ function AdminInterview() {
       company: pack.company || "",
       role: pack.role || "",
       type: pack.type || "online",
-      sets: pack.sets || 1,
+      problems: pack.problems || [],
       attempted: pack.attempted || 0,
       successRate: pack.successRate || 0,
       isPremium: Boolean(pack.isPremium),
@@ -126,13 +155,12 @@ function AdminInterview() {
               <input value={form.company} onChange={(e) => setForm((p) => ({ ...p, company: e.target.value }))} placeholder="Company" className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none focus:border-cyan-500" />
               <input value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))} placeholder="Role / Round" className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none focus:border-cyan-500" />
 
-              <div className="grid grid-cols-2 gap-3">
-                <select value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))} className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none focus:border-cyan-500">
+              <div className="w-full">
+                <select value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none focus:border-cyan-500">
                   <option value="online">Online</option>
                   <option value="phone">Phone</option>
                   <option value="onsite">Onsite</option>
                 </select>
-                <input type="number" min="1" value={form.sets} onChange={(e) => setForm((p) => ({ ...p, sets: e.target.value }))} placeholder="Sets" className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none focus:border-cyan-500" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -141,6 +169,58 @@ function AdminInterview() {
               </div>
 
               <textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} placeholder="Description" rows={3} className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none focus:border-cyan-500" />
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Select Problems</label>
+                <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-3 py-2">
+                  <Search size={14} className="text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Search problems..."
+                    value={problemQuery}
+                    onChange={(e) => setProblemQuery(e.target.value)}
+                    className="w-full bg-transparent text-sm outline-none placeholder:text-slate-600 focus:ring-0"
+                  />
+                </div>
+                <div className="max-h-40 overflow-y-auto space-y-1 rounded-xl border border-white/10 bg-black/20 p-2">
+                  {loadingProblems ? (
+                    <p className="text-xs text-slate-500 p-1">Loading problems...</p>
+                  ) : filteredProblems.length === 0 ? (
+                    <p className="text-xs text-slate-500 p-1">No problems found</p>
+                  ) : (
+                    filteredProblems.map((problem) => {
+                      const isSelected = form.problems.includes(problem._id);
+                      return (
+                        <button
+                          key={problem._id}
+                          type="button"
+                          onClick={() => {
+                            setForm((p) => {
+                              const newProblems = p.problems.includes(problem._id)
+                                ? p.problems.filter((id) => id !== problem._id)
+                                : [...p.problems, problem._id];
+                              return { ...p, problems: newProblems };
+                            });
+                          }}
+                          className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition ${
+                            isSelected
+                              ? "bg-cyan-500/10 text-cyan-300 border border-cyan-500/20"
+                              : "hover:bg-white/5 border border-transparent text-slate-300"
+                          }`}
+                        >
+                          <span>{problem.title}</span>
+                          <span className="text-[9px] uppercase tracking-widest text-slate-500">
+                            {problem.difficulty}
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Selected: <span className="font-bold text-cyan-300">{form.problems.length}</span> problem(s)
+                </p>
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <label className="flex items-center gap-2 text-sm text-slate-300">

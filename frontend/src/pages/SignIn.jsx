@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { loginUser } from '../authSlice';
+import { loginUser, googleAuthUser } from '../authSlice';
 import {z} from 'zod'
 import { useForm } from 'react-hook-form';
 
@@ -34,6 +34,41 @@ const Signin = () => {
    const onSubmit=(data)=>{
     dispatch(loginUser(data));
    }
+
+   useEffect(() => {
+     const initializeGoogleSignIn = () => {
+       if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+         const tokenClient = window.google.accounts.oauth2.initTokenClient({
+           client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+           scope: 'email profile openid',
+           callback: (tokenResponse) => {
+             if (tokenResponse && tokenResponse.access_token) {
+               dispatch(googleAuthUser(tokenResponse.access_token));
+             }
+           },
+         });
+         window.googleTokenClient = tokenClient;
+       }
+     };
+
+     if (window.google) {
+       initializeGoogleSignIn();
+     } else {
+       const script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+       if (script) {
+         script.addEventListener('load', initializeGoogleSignIn);
+       }
+     }
+   }, [dispatch]);
+
+   const handleGoogleLogin = () => {
+     if (window.googleTokenClient) {
+       window.googleTokenClient.requestAccessToken();
+     } else {
+       alert("Google Sign-In is initializing. Please try again in a moment.");
+     }
+   };
+
   return (
     <div className="relative flex min-h-[calc(100vh-80px)] items-center justify-center overflow-hidden px-6 py-12">
       
@@ -50,7 +85,11 @@ const Signin = () => {
             <p className="text-sm text-slate-400">Continue your coding journey with ALGORISE.</p>
           </div>
 
-          <button type="button" className="mb-6 flex w-full items-center justify-center gap-3 rounded-xl bg-white px-4 py-3 font-semibold text-black transition hover:bg-slate-100 active:scale-[0.99]">
+          <button 
+            type="button" 
+            onClick={handleGoogleLogin}
+            className="mb-6 flex w-full items-center justify-center gap-3 rounded-xl bg-white px-4 py-3 font-semibold text-black transition hover:bg-slate-100 active:scale-[0.99]"
+          >
             <img src="google.svg" alt="Google" className="w-5 h-5" />
             Continue with Google
           </button>

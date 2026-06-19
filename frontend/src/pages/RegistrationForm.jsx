@@ -151,7 +151,7 @@ import { useNavigate } from "react-router-dom";
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
-import { registerUser } from '../authSlice';
+import { registerUser, googleAuthUser } from '../authSlice';
 
 const signupSchema = z.object({
   firstName: z.string().min(3, "Minimum character should be 3"),
@@ -184,6 +184,40 @@ const Registration = () => {
     dispatch(registerUser(data));
   };
 
+  useEffect(() => {
+    const initializeGoogleSignIn = () => {
+      if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+          scope: 'email profile openid',
+          callback: (tokenResponse) => {
+            if (tokenResponse && tokenResponse.access_token) {
+              dispatch(googleAuthUser(tokenResponse.access_token));
+            }
+          },
+        });
+        window.googleTokenClient = tokenClient;
+      }
+    };
+
+    if (window.google) {
+      initializeGoogleSignIn();
+    } else {
+      const script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (script) {
+        script.addEventListener('load', initializeGoogleSignIn);
+      }
+    }
+  }, [dispatch]);
+
+  const handleGoogleLogin = () => {
+    if (window.googleTokenClient) {
+      window.googleTokenClient.requestAccessToken();
+    } else {
+      alert("Google Sign-In is initializing. Please try again in a moment.");
+    }
+  };
+
   return (
     <div className="relative flex min-h-[calc(100vh-80px)] items-center justify-center overflow-hidden px-6 py-12">
       
@@ -201,7 +235,11 @@ const Registration = () => {
             <p className="text-sm text-slate-400">Start practicing with curated coding problems.</p>
           </div>
 
-          <button type="button" className="mb-6 flex w-full items-center justify-center gap-3 rounded-xl bg-white px-4 py-3 font-semibold text-black transition hover:bg-slate-100 active:scale-[0.99]">
+          <button 
+            type="button" 
+            onClick={handleGoogleLogin}
+            className="mb-6 flex w-full items-center justify-center gap-3 rounded-xl bg-white px-4 py-3 font-semibold text-black transition hover:bg-slate-100 active:scale-[0.99]"
+          >
             <img src="google.svg" alt="" className="w-5 h-5" />
             Sign up with Google
           </button>

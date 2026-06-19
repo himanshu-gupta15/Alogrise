@@ -14,6 +14,10 @@ const normalizePayload = (body = {}) => {
 
   if (payload.isPremium === false) payload.priceInCents = 0;
 
+  if (Array.isArray(payload.problems)) {
+    payload.sets = payload.problems.length;
+  }
+
   return payload;
 };
 
@@ -21,8 +25,8 @@ const createInterviewPack = async (req, res) => {
   try {
     const payload = normalizePayload(req.body);
 
-    if (!payload.packId || !payload.company || !payload.role || !payload.type) {
-      return res.status(400).json({ error: "packId, company, role and type are required" });
+    if (!payload.packId || !payload.company || !payload.role || !payload.type || !payload.problems || !payload.problems.length) {
+      return res.status(400).json({ error: "packId, company, role, type and at least one problem are required" });
     }
 
     const exists = await InterviewPack.findOne({ packId: payload.packId });
@@ -49,6 +53,10 @@ const updateInterviewPack = async (req, res) => {
     }
 
     const payload = normalizePayload(req.body);
+
+    if (payload.problems !== undefined && (!Array.isArray(payload.problems) || payload.problems.length === 0)) {
+      return res.status(400).json({ error: "At least one problem must be selected for the pack" });
+    }
 
     if (payload.packId) {
       const duplicate = await InterviewPack.findOne({ packId: payload.packId, _id: { $ne: id } });
@@ -102,7 +110,7 @@ const getAdminInterviewPacks = async (_req, res) => {
 const getPublicInterviewPacks = async (req, res) => {
   try {
     const packs = await InterviewPack.find({ isActive: true })
-      .select("packId company role type sets attempted successRate isPremium priceInCents currency description")
+      .select("packId company role type sets attempted successRate isPremium priceInCents currency description problems")
       .sort({ isPremium: 1, attempted: -1 })
       .lean();
 

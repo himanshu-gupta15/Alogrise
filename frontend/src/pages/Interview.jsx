@@ -263,7 +263,7 @@ function Interview() {
                   <button
                     onClick={() => {
                       // free pack or purchased pack -> direct start (store pack and navigate)
-                      localStorage.setItem('activePack', JSON.stringify({ id: item.packId, company: item.company, role: item.role }));
+                      localStorage.setItem('activePack', JSON.stringify({ id: item.packId, company: item.company, role: item.role, problems: item.problems || [] }));
                       window.location.href = '/practice';
                     }}
                     className="mt-6 w-full rounded-xl bg-cyan-500 px-4 py-2.5 text-sm font-black uppercase tracking-wider text-black transition hover:bg-cyan-400"

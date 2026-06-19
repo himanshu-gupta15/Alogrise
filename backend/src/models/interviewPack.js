@@ -68,6 +68,12 @@ const interviewPackSchema = new Schema(
       trim: true,
       maxlength: 600,
     },
+    problems: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "problem",
+      }
+    ],
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: "user",

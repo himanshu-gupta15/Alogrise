@@ -638,9 +638,9 @@ For issues or questions:
 
 ---
 
-## 🎉 You're All Set!
 
-Your ALGORISE competitive programming platform is ready to use! Start creating and solving problems! 🚀
+
+
 
 ---
 

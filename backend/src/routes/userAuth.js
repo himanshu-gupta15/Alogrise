@@ -1,13 +1,14 @@
 import express from "express"
 
 const authRouter=express.Router()
-import { register,login,logout, adminRegister, deleteProfile, getAllUsers, promoteUser, getUserProfile, updateMyProfile, toggleFollowUser } from "../controllers/userAuthent.js"
+import { register,login,logout, adminRegister, deleteProfile, getAllUsers, promoteUser, getUserProfile, updateMyProfile, toggleFollowUser, googleLogin } from "../controllers/userAuthent.js"
 import { userMiddleware } from "../middleware/userMiddleware.js"
 import { adminMiddleware } from "../middleware/adminMeddleware.js"
 import { getLeaderboard } from "../controllers/userAuthent.js"
 
 authRouter.post('/register',register)
 authRouter.post('/login',login)
+authRouter.post('/google-auth', googleLogin)
 authRouter.post('/logout',userMiddleware,logout)
 authRouter.get('/getleaderboard',userMiddleware,getLeaderboard)
 authRouter.get('/profile/:userId', userMiddleware, getUserProfile)

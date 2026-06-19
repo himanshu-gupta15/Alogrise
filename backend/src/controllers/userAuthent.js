@@ -78,6 +78,7 @@
 
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import axios from "axios";
 import redisClient from "../config/redis.js";
 import User from "../models/user.js";
 import validate from "../utils/validator.js";
@@ -422,6 +423,67 @@ export const toggleFollowUser = async (req, res) => {
   }
 };
 
+const googleLogin = async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+    if (!accessToken) {
+      return res.status(400).json({ message: "Access token is required" });
+    }
 
-export { register, login, logout,adminRegister,deleteProfile,getAllUsers};
+    // Fetch user info from Google API
+    const response = await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`);
+    const googleUser = response.data;
+
+    if (!googleUser.email) {
+      return res.status(400).json({ message: "Invalid access token" });
+    }
+
+    const { email, given_name, family_name, picture } = googleUser;
+
+    // Check if user exists in database
+    let user = await User.findOne({ emailId: email.toLowerCase() });
+
+    if (!user) {
+      // Create a new user if they do not exist
+      user = await User.create({
+        firstName: given_name || email.split('@')[0],
+        lastName: family_name || "",
+        emailId: email.toLowerCase(),
+        profilePicture: picture || "",
+        role: "user",
+      });
+    }
+
+    // Create a JWT token
+    const token = jwt.sign(
+      { _id: user._id, emailId: user.emailId, role: user.role },
+      process.env.JWT_KEY,
+      { expiresIn: "1h" }
+    );
+
+    // Set cookie
+    res.cookie("token", token, { maxAge: 60 * 60 * 1000 });
+
+    res.status(200).json({
+      user: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        emailId: user.emailId,
+        _id: user._id,
+        role: user.role,
+        profilePicture: user.profilePicture || '',
+        githubLink: user.githubLink || '',
+        linkedinLink: user.linkedinLink || '',
+        bio: user.bio || '',
+        followersCount: user.followers?.length || 0,
+        followingCount: user.following?.length || 0,
+      },
+      message: "Google Login Successful",
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Google Authentication failed", error: error?.response?.data?.error_description || error.message });
+  }
+};
+
+export { register, login, logout,adminRegister,deleteProfile,getAllUsers, googleLogin};
 

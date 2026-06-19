@@ -75,7 +75,7 @@ function ProblemPractice() {
                 const { data: packsList } = await axiosClient.get('/interview/packs');
                 const matchedPack = packsList.find(p => p.packId === pack);
                 if (matchedPack) {
-                  const active = { id: matchedPack.packId, company: matchedPack.company, role: matchedPack.role };
+                  const active = { id: matchedPack.packId, company: matchedPack.company, role: matchedPack.role, problems: matchedPack.problems || [] };
                   localStorage.setItem('activePack', JSON.stringify(active));
                   setActivePack(active);
                 }
@@ -126,10 +126,16 @@ function ProblemPractice() {
   /* ================= FILTERING LOGIC ================= */
 
   const filteredProblems = problems.filter((problem) => {
-    if (activePack && activePack.company) {
-      const pCompanies = Array.isArray(problem.companies) ? problem.companies : [];
-      const hasCompany = pCompanies.some(c => c.toLowerCase() === activePack.company.toLowerCase());
-      if (!hasCompany) return false;
+    if (activePack) {
+      const packProblems = Array.isArray(activePack.problems) ? activePack.problems : [];
+      if (packProblems.length > 0) {
+        if (!packProblems.includes(problem._id)) return false;
+      } else if (activePack.company) {
+        // Fallback for legacy packs
+        const pCompanies = Array.isArray(problem.companies) ? problem.companies : [];
+        const hasCompany = pCompanies.some(c => c.toLowerCase() === activePack.company.toLowerCase());
+        if (!hasCompany) return false;
+      }
     }
 
     // 1. Difficulty Match
@@ -233,7 +239,7 @@ function ProblemPractice() {
                     {activePack.company} <span className="text-slate-400 text-lg font-medium tracking-normal lowercase first-letter:uppercase">({activePack.role})</span>
                   </h3>
                   <p className="text-sm text-slate-400 mt-1">
-                    Showing only problems matching <strong className="text-amber-300">{activePack.company}</strong> interview patterns.
+                    Showing problems for <strong className="text-amber-300">{activePack.company}</strong> ({activePack.role}).
                   </p>
                 </div>
               </div>

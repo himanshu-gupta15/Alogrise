@@ -487,6 +487,18 @@ export const registerUser = createAsyncThunk(
     }
 );
 
+export const googleAuthUser = createAsyncThunk(
+    'auth/googleAuth',
+    async (accessToken, { rejectWithValue }) => {
+        try {
+            const response = await axiosClient.post('/user/google-auth', { accessToken });
+            return response.data.user;
+        } catch (error) {
+            return rejectWithValue(getErrorMessage(error));
+        }
+    }
+);
+
 export const loginUser = createAsyncThunk(
     'auth/login',
     async (credentials, { rejectWithValue }) => {
@@ -591,6 +603,23 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
       })
       .addCase(loginUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.user = null;
+        state.isAuthenticated = false;
+      })
+
+      // GOOGLE AUTH
+      .addCase(googleAuthUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(googleAuthUser.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload;
+        state.isAuthenticated = true;
+      })
+      .addCase(googleAuthUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
         state.user = null;
