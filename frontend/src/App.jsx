@@ -250,6 +250,7 @@ import AdminInterview from "./component/AdminInterview";
 
 import { checkAuth } from "./authSlice";
 import AdminUpdate_problem from "./component/AdminUpdate_problem";
+import AdminUpdateList from "./component/AdminUpdateList";
 import Profile from "./component/Profile";
 import Leaderboard from "./component/Leaderboard";
 import Contest from "./component/Contest";
@@ -338,6 +339,7 @@ function App() {
         <Route path="/admin/contest" element={<AdminRoute><AdminContest /></AdminRoute>} />
         <Route path="/admin/interview" element={<AdminRoute><AdminInterview /></AdminRoute>} />
         <Route path="/admin/delete" element={<AdminRoute><AdminDelete /></AdminRoute>} />
+        <Route path="/admin/update" element={<AdminRoute><AdminUpdateList /></AdminRoute>} />
        <Route path="/admin/update/:id" element={<AdminRoute><AdminUpdate_problem /></AdminRoute>} />
         <Route path="/admin/user-management" element={<AdminRoute><UserManagement /></AdminRoute>} />
         <Route path="/admin/video" element={<AdminRoute><AdminVideo /></AdminRoute>} />

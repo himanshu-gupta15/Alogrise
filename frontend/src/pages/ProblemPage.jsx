@@ -98,7 +98,7 @@
 
 //   return (
 //     <div className="h-[calc(100vh-80px)] flex bg-[#050505] text-slate-300 overflow-hidden">
-      
+
 //       {/* LEFT PANEL: DESCRIPTION & DOCS */}
 //       <div className="w-1/2 flex flex-col border-r border-white/5 bg-[#0a0a0a]">
 //         {/* Modern Tabs */}
@@ -190,7 +190,7 @@
 //               </button>
 //             ))}
 //           </div>
-          
+
 //           {/* Language Picker */}
 //           <div className="flex gap-2">
 //             {['cpp', 'java', 'javascript'].map((lang) => (
@@ -317,7 +317,7 @@
 // const ProblemPage = () => {
 //   const navigate = useNavigate();
 //   const { problemId } = useParams();
-  
+
 //   // Logic State
 //   const [problem, setProblem] = useState(null);
 //   const [selectedLanguage, setSelectedLanguage] = useState('javascript');
@@ -325,7 +325,7 @@
 //   const [loading, setLoading] = useState(false);
 //   const [runResult, setRunResult] = useState(null);
 //   const [showSuccess, setShowSuccess] = useState(false);
-  
+
 //   // Navigation State
 //   const [activeLeftTab, setActiveLeftTab] = useState('description');
 //   const [activeRightTab, setActiveRightTab] = useState('code');
@@ -431,7 +431,7 @@
 
 //   return (
 //     <div className="h-[calc(100vh-80px)] flex bg-[#050505] text-slate-300 overflow-hidden relative">
-      
+
 //       {/* SUCCESS MODAL OVERLAY */}
 //       {showSuccess && (
 //         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-500">
@@ -531,7 +531,7 @@
 //               </button>
 //             ))}
 //           </div>
-          
+
 //           <div className="flex gap-2">
 //             {['cpp', 'java', 'javascript'].map((lang) => (
 //               <button
@@ -658,7 +658,7 @@
 // const ProblemPage = () => {
 //   const navigate = useNavigate();
 //   const { problemId } = useParams();
-  
+
 //   // Logic State
 //   const [problem, setProblem] = useState(null);
 //   const [selectedLanguage, setSelectedLanguage] = useState('javascript');
@@ -666,7 +666,7 @@
 //   const [loading, setLoading] = useState(false);
 //   const [runResult, setRunResult] = useState(null);
 //   const [showSuccess, setShowSuccess] = useState(false);
-  
+
 //   // Navigation State
 //   const [activeLeftTab, setActiveLeftTab] = useState('description');
 //   const [activeRightTab, setActiveRightTab] = useState('code');
@@ -790,7 +790,7 @@
 
 //   return (
 //     <div className="h-[calc(100vh-80px)] flex bg-[#050505] text-slate-300 overflow-hidden relative">
-      
+
 //       {/* SUCCESS MODAL OVERLAY */}
 //       {showSuccess && (
 //         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-500">
@@ -890,7 +890,7 @@
 //               </button>
 //             ))}
 //           </div>
-          
+
 //           <div className="flex gap-2">
 //             {['cpp', 'java', 'javascript'].map((lang) => (
 //               <button
@@ -1014,9 +1014,9 @@ import ChatAi from '../component/ChatAi';
 import Editorial from '../component/Editorial';
 
 // UI Icons
-import { 
-  Terminal, Info, Play, Send, Zap, 
-  MessageSquare, History, BookOpen, CheckCircle2, 
+import {
+  Terminal, Info, Play, Send, Zap,
+  MessageSquare, History, BookOpen, CheckCircle2,
   ArrowRight, Layers, RefreshCcw
 } from 'lucide-react';
 
@@ -1046,7 +1046,7 @@ const ProblemPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch(); // Initialize dispatch
   const { problemId } = useParams();
-  
+
   // Logic State
   const [problem, setProblem] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState('javascript');
@@ -1054,7 +1054,7 @@ const ProblemPage = () => {
   const [loading, setLoading] = useState(false);
   const [runResult, setRunResult] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
-  
+
   // Navigation State
   const [activeLeftTab, setActiveLeftTab] = useState('description');
   const [activeRightTab, setActiveRightTab] = useState('code');
@@ -1128,7 +1128,7 @@ const ProblemPage = () => {
     setLoading(true);
     try {
       const response = await axiosClient.post(`/submission/submit/${problemId}`, { code, language: selectedLanguage });
-      
+
       // Update global user stats if the submission is accepted
       if (response.data.accepted === true) {
         triggerCelebration();
@@ -1143,8 +1143,8 @@ const ProblemPage = () => {
         }
         /* ==================================================================== */
       }
-      
-      setRunResult(response.data); 
+
+      setRunResult(response.data);
       setActiveRightTab('testcase');
     } catch (error) {
       console.error('Submission Error:', error);
@@ -1190,7 +1190,7 @@ const ProblemPage = () => {
 
   return (
     <div className="h-[calc(100vh-80px)] flex bg-[#050505] text-slate-300 overflow-hidden relative">
-      
+
       {/* SUCCESS MODAL OVERLAY */}
       {showSuccess && (
         <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 p-6 backdrop-blur-md animate-in fade-in duration-500">
@@ -1204,7 +1204,7 @@ const ProblemPage = () => {
             <h2 className="text-3xl font-black tracking-tighter uppercase italic text-white mb-2">Accepted</h2>
             <p className="text-slate-400 font-mono text-[10px] tracking-widest uppercase mb-8 italic">Solution Synchronized with Grid</p>
             <div className="space-y-3">
-              <button 
+              <button
                 onClick={handleNextChallenge}
                 className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 group shadow-[0_0_20px_rgba(16,185,129,0.3)]"
               >
@@ -1225,7 +1225,7 @@ const ProblemPage = () => {
             { id: 'submissions', label: 'History', icon: History },
             { id: 'chatAI', label: 'AI Tutor', icon: MessageSquare }
           ].map((tab) => (
-            <button 
+            <button
               key={tab.id}
               onClick={() => setActiveLeftTab(tab.id)}
               className={`flex items-center gap-2 px-6 py-4 text-[10px] font-black uppercase tracking-widest transition-all relative whitespace-nowrap
@@ -1268,7 +1268,7 @@ const ProblemPage = () => {
                             <span className="whitespace-pre-wrap font-mono"> {example.output?.replace(/\\n/g, '\n')}</span>
                           </p>
                           <div className="mt-4 rounded-xl border border-white/5 bg-black/40 p-4 text-sm leading-relaxed text-slate-400">
-                             <span className="mb-1 block text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Logic Detail:</span> {example.explanation}
+                            <span className="mb-1 block text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Logic Detail:</span> {example.explanation}
                           </div>
                         </div>
                       </div>
@@ -1278,7 +1278,7 @@ const ProblemPage = () => {
                   <div className="mt-10 space-y-6">
                     {toDisplayList(problem.constraints).length > 0 && (
                       <div>
-                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Constraints</p>
+                        <p className="mb-3  text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Constraints</p>
                         <div className="space-y-2">
                           {toDisplayList(problem.constraints).map((constraint, index) => (
                             <p key={`${constraint}-${index}`} className="text-sm text-slate-300">• {constraint}</p>
@@ -1338,7 +1338,7 @@ const ProblemPage = () => {
         <div className="flex justify-between items-center bg-[#0a0a0a] border-b border-white/5 px-4 h-14">
           <div className="flex h-full">
             {['code', 'testcase'].map((tab) => (
-              <button 
+              <button
                 key={tab}
                 onClick={() => setActiveRightTab(tab)}
                 className={`px-8 h-full text-[10px] font-black uppercase tracking-[0.2em] relative transition-colors
@@ -1349,7 +1349,7 @@ const ProblemPage = () => {
               </button>
             ))}
           </div>
-          
+
           <div className="flex gap-2">
             {['cpp', 'java', 'javascript'].map((lang) => (
               <button
@@ -1367,23 +1367,23 @@ const ProblemPage = () => {
         <div className="flex-1 relative bg-[#050505]">
           {activeRightTab === 'code' ? (
             <Editor
-                height="100%"
-                language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage}
-                value={code}
-                theme="vs-dark"
-                onChange={(val) => setCode(val)}
-                options={{ 
-                    fontSize: 14, 
-                    fontFamily: 'JetBrains Mono, Menlo, monospace',
-                    minimap: { enabled: false }, 
-                    automaticLayout: true, 
-                    padding: { top: 24 },
-                    lineNumbersMinChars: 4,
-                    scrollBeyondLastLine: false,
-                  wordWrap: 'on',
-                  wrappingIndent: 'same',
-                    cursorSmoothCaretAnimation: true
-                }}
+              height="100%"
+              language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage}
+              value={code}
+              theme="vs-dark"
+              onChange={(val) => setCode(val)}
+              options={{
+                fontSize: 14,
+                fontFamily: 'JetBrains Mono, Menlo, monospace',
+                minimap: { enabled: false },
+                automaticLayout: true,
+                padding: { top: 24 },
+                lineNumbersMinChars: 4,
+                scrollBeyondLastLine: false,
+                wordWrap: 'on',
+                wrappingIndent: 'same',
+                cursorSmoothCaretAnimation: true
+              }}
             />
           ) : (
             <div className="p-8 h-full bg-[#050505] overflow-y-auto custom-scrollbar">
@@ -1395,7 +1395,7 @@ const ProblemPage = () => {
                   {runResult.testCase?.map((tc, i) => (
                     <div key={i} className="group rounded-2xl border border-white/5 bg-white/2 p-6 transition-all hover:bg-white/4">
                       <div className="flex justify-between items-center mb-6">
-                        <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Case_{i+1}</span>
+                        <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Case_{i + 1}</span>
                         <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border shadow-sm ${tc.status_id === 3 ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' : 'text-rose-400 border-rose-500/20 bg-rose-500/5'}`}>
                           {tc.status_id === 3 ? 'ACCEPTED' : 'FAILURE'}
                         </div>
@@ -1414,14 +1414,14 @@ const ProblemPage = () => {
                   ))}
                   {runResult.errorMessage && (
                     <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs font-mono">
-                       {runResult.errorMessage}
+                      {runResult.errorMessage}
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-64 text-slate-700">
-                    <Layers size={40} className="mb-4 opacity-20" />
-                    <p className="text-xs font-mono uppercase tracking-[0.2em] italic">Waiting for Transmission...</p>
+                  <Layers size={40} className="mb-4 opacity-20" />
+                  <p className="text-xs font-mono uppercase tracking-[0.2em] italic">Waiting for Transmission...</p>
                 </div>
               )}
             </div>
@@ -1429,28 +1429,28 @@ const ProblemPage = () => {
         </div>
 
         <div className="p-4 bg-[#0a0a0a] border-t border-white/5 flex justify-between items-center px-8 h-20">
-            <button 
-                onClick={() => setCode(problem?.startCode.find(sc => sc.language === langMap[selectedLanguage]).initialCode)}
-                className="text-[9px] font-black text-slate-600 hover:text-white transition-colors tracking-[0.3em] uppercase italic flex items-center gap-2"
+          <button
+            onClick={() => setCode(problem?.startCode.find(sc => sc.language === langMap[selectedLanguage]).initialCode)}
+            className="text-[9px] font-black text-slate-600 hover:text-white transition-colors tracking-[0.3em] uppercase italic flex items-center gap-2"
+          >
+            <RefreshCcw size={12} /> Reset Buffer
+          </button>
+          <div className="flex gap-4">
+            <button
+              onClick={handleRun}
+              disabled={loading}
+              className="flex items-center gap-2 px-8 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all active:scale-95 disabled:opacity-50"
             >
-                <RefreshCcw size={12} /> Reset Buffer
+              <Play size={14} fill="currentColor" /> {loading ? 'Running...' : 'Run'}
             </button>
-            <div className="flex gap-4">
-                <button
-                    onClick={handleRun}
-                    disabled={loading}
-                    className="flex items-center gap-2 px-8 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all active:scale-95 disabled:opacity-50"
-                >
-                    <Play size={14} fill="currentColor" /> {loading ? 'Running...' : 'Run'}
-                </button>
-                <button
-                    onClick={handleSubmitCode}
-                    disabled={loading}
-                    className="flex items-center gap-2 px-10 py-3 bg-cyan-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-cyan-500 hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all active:scale-95 disabled:opacity-50"
-                >
-                    <Send size={14} /> {loading ? 'Encrypting...' : 'Submit'}
-                </button>
-            </div>
+            <button
+              onClick={handleSubmitCode}
+              disabled={loading}
+              className="flex items-center gap-2 px-10 py-3 bg-cyan-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-cyan-500 hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all active:scale-95 disabled:opacity-50"
+            >
+              <Send size={14} /> {loading ? 'Encrypting...' : 'Submit'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
