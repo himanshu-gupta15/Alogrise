@@ -135,7 +135,12 @@ const register = async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    res.cookie("token", token, { maxAge: 60 * 60 * 1000 });
+    res.cookie("token", token, {
+  httpOnly: true,
+  secure: true,        // HTTPS only (Render + Netlify)
+  sameSite: "none",    // Required for cross-site cookies
+  maxAge: 60 * 60 * 1000,
+});
 
     res.status(201).json({
       user: {
@@ -177,7 +182,12 @@ const login = async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    res.cookie("token", token, { maxAge: 60 * 60 * 1000 });
+    res.cookie("token", token, {
+  httpOnly: true,
+  secure: true,        // HTTPS only (Render + Netlify)
+  sameSite: "none",    // Required for cross-site cookies
+  maxAge: 60 * 60 * 1000,
+});
 
     res.status(200).json({
       user: {
@@ -210,7 +220,13 @@ const logout = async (req, res) => {
       await redisClient.expireAt(`token:${token}`, payload.exp);
     }
 
-    res.cookie("token", null, { expires: new Date(Date.now()) });
+   res.clearCookie("token", {
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+});
+
+res.status(200).send("Logged Out Successfully");
     res.send("Logged Out Successfully");
   } catch (error) {
     res.status(503).send("Error: " + error.message);
@@ -250,8 +266,13 @@ const adminRegister=async(req,res)=>{
 
     const user=await User.create(req.body);
     const token=jwt.sign({_id:user._id,emailId:emailId,role:user.role},process.env.JWT_KEY,{expiresIn:60*60});
-    res.cookie('token',token,{maxAge:60*60*1000});
-    res.status(201).send("User Registered Successfully");
+  res.cookie("token", token, {
+  httpOnly: true,
+  secure: true,        // HTTPS only (Render + Netlify)
+  sameSite: "none",    // Required for cross-site cookies
+  maxAge: 60 * 60 * 1000,
+});
+    res.status(201).send("Admin Registered Successfully");
   }catch(err){
     res.status(400).send("Error: "+err);
   }
@@ -462,7 +483,12 @@ const googleLogin = async (req, res) => {
     );
 
     // Set cookie
-    res.cookie("token", token, { maxAge: 60 * 60 * 1000 });
+   res.cookie("token", token, {
+  httpOnly: true,
+  secure: true,        // HTTPS only (Render + Netlify)
+  sameSite: "none",    // Required for cross-site cookies
+  maxAge: 60 * 60 * 1000,
+});
 
     res.status(200).json({
       user: {
