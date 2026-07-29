@@ -7,11 +7,28 @@ const redisUser = process.env.REDIS_USER?.trim() || "default";
 
 export const isRedisConfigured = Boolean(redisUrl || redisHost);
 
+let hasConnectedOnce = false;
+
+const reconnectStrategy = (retries) => {
+  if (!hasConnectedOnce) {
+    // If it fails on initial startup, do not retry so the server boots immediately
+    return false;
+  }
+  if (retries > 5) {
+    console.error("Redis reconnection failed after 5 retries.");
+    return new Error("Redis reconnection failed");
+  }
+  // Exponential backoff up to 3 seconds
+  return Math.min(retries * 1000, 3000);
+};
+
 const redisOptions = redisUrl
   ? {
       url: redisUrl,
       socket: {
-        reconnectStrategy: () => false,
+        keepAlive: true,
+        keepAliveInitialDelay: 10000,
+        reconnectStrategy: reconnectStrategy,
       },
     }
   : {
@@ -20,7 +37,9 @@ const redisOptions = redisUrl
       socket: {
         host: redisHost,
         port: redisPort,
-        reconnectStrategy: () => false,
+        keepAlive: true,
+        keepAliveInitialDelay: 10000,
+        reconnectStrategy: reconnectStrategy,
       },
     };
 
@@ -30,6 +49,7 @@ const redisClient = createClient({
 
 redisClient.on("connect", () => {
   console.log("Redis connected");
+  hasConnectedOnce = true;
 });
 
 redisClient.on("error", (err) => {
