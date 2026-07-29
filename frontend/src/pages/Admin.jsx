@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-    Plus, Edit, Trash2, Video, ShieldCheck, Activity, 
-    Users, FileCode, CheckCircle, ArrowUpRight, Trophy, ClipboardList 
+import {
+    Plus, Edit, Trash2, Video, ShieldCheck, Activity,
+    Users, FileCode, CheckCircle, ArrowUpRight, Trophy, ClipboardList
 } from 'lucide-react';
 import axiosClient from '../utils/axiosClient';
 
@@ -46,7 +46,7 @@ function Admin() {
             alert('Reject failed');
         }
     };
-    
+
     const stats = [
         { label: "Total Problems", value: "542", icon: FileCode, color: "text-cyan-400", glow: "shadow-cyan-500/20" },
         { label: "Active Users", value: "12.8k", icon: Users, color: "text-purple-400", glow: "shadow-purple-500/20" },
@@ -71,31 +71,25 @@ function Admin() {
             <div className="absolute bottom-0 left-0 w-200 h-200 bg-purple-500/5 blur-[150px] rounded-full pointer-events-none"></div>
 
             <div className="container mx-auto px-6 pt-16 relative z-10 perspective-1000">
-                
+
                 {/* 1. Header Section */}
                 <div className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-8 animate-in fade-in slide-in-from-top duration-700">
                     <div>
                         <div className="flex items-center gap-3 mb-4">
-                            <ShieldCheck className="text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.4)]" size={24} />
-                            <h2 className="text-cyan-400 font-mono text-[10px] tracking-[0.5em] uppercase">Root Privileges Active</h2>
+
+
                         </div>
-                        <h1 className="text-6xl font-black tracking-tighter italic uppercase">
+                        <h1 className="text-6xl font-black tracking-tighter">
                             Command <span className="text-slate-700">Center</span>
                         </h1>
                     </div>
-                    <div className="group bg-white/5 border border-white/10 px-6 py-3 rounded-2xl backdrop-blur-xl transform transition-transform hover:scale-105 duration-300">
-                        <p className="text-slate-500 text-[9px] uppercase font-black tracking-widest mb-1">Grid Status</p>
-                        <p className="text-emerald-400 text-sm font-mono flex items-center gap-2">
-                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span> 
-                            <span className="font-bold uppercase tracking-tighter">Operational</span>
-                        </p>
-                    </div>
+
                 </div>
 
                 {/* 2. Quick Stats Grid - Floating Effect */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
                     {stats.map((stat, i) => (
-                        <div key={i} 
+                        <div key={i}
                             style={{ animationDelay: `${i * 100}ms` }}
                             className="bg-white/3 border border-white/10 p-6 rounded-2xl backdrop-blur-md transform transition-all duration-500 hover:bg-white/7 hover:-translate-y-2 hover:shadow-2xl animate-in zoom-in-95"
                         >
@@ -112,17 +106,17 @@ function Admin() {
                 <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-[0.4em] mb-8 ml-1">Management Modules</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-20">
                     {adminOptions.map((option, i) => (
-                        <div 
-                            key={option.id} 
-                            onClick={() => navigate(option.route)} 
+                        <div
+                            key={option.id}
+                            onClick={() => navigate(option.route)}
                             style={{ animationDelay: `${i * 150}ms` }}
                             className="group relative cursor-pointer preserve-3d transition-all duration-700 hover:transform-[rotateX(10deg)_rotateY(-10deg)]"
                         >
                             {/* Card Glow Background */}
                             <div className="absolute -inset-1 bg-linear-to-br opacity-0 group-hover:opacity-20 transition-opacity duration-500 rounded-4xl blur-xl bg-white"></div>
-                            
+
                             <div className="relative h-full bg-slate-900/40 backdrop-blur-2xl p-8 rounded-4xl border border-white/10 flex flex-col items-center text-center shadow-2xl transition-all duration-500 group-hover:translate-z-10 group-hover:border-white/20">
-                                
+
                                 <div className={`p-5 rounded-2xl mb-8 bg-linear-to-br ${option.color} shadow-2xl ${option.glow} transform transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6`}>
                                     <option.icon size={32} className="text-black" />
                                 </div>

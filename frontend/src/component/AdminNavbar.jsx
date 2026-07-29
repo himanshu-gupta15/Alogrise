@@ -8,7 +8,7 @@
 //   return (
 //     <nav className="sticky top-0 z-50 w-full bg-black/90 backdrop-blur-xl border-b border-cyan-500/20">
 //       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        
+
 //         {/* Logo Section */}
 //         <div className="flex items-center gap-4">
 //           <div className="flex items-center gap-2 group cursor-pointer" onClick={() => navigate('/admin')}>
@@ -61,10 +61,10 @@ import { ShieldAlert, LayoutDashboard, Terminal, LogOut, User as UserIcon, Menu,
 const AdminNavbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  
+
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  
+
   const { user } = useSelector((state) => state.auth);
 
   const handleLogout = () => {
@@ -83,10 +83,10 @@ const AdminNavbar = () => {
     <nav className="sticky top-0 z-50 w-full bg-black/80 backdrop-blur-xl border-b border-white/10 transition-all duration-500">
       {/* Top Neon Accent Line */}
       <div className="absolute top-0 left-0 h-px w-full bg-linear-to-r from-transparent via-cyan-500/50 to-transparent"></div>
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
-          
+
           {/* LEFT SIDE: LOGO & ADMIN LINKS */}
           <div className="flex items-center gap-12">
             <Link to="/admin" className="flex items-center gap-3 group">
@@ -97,7 +97,7 @@ const AdminNavbar = () => {
                 </div>
               </div>
               <span className="text-2xl font-black tracking-tighter bg-linear-to-r from-white via-slate-200 to-slate-500 bg-clip-text text-transparent group-hover:from-cyan-400 group-hover:to-purple-500 transition-all duration-500">
-                ALGORISE <span className="text-[10px] font-mono ml-1 text-cyan-500 uppercase tracking-[0.2em]">Admin_OS</span>
+                ALGORISE <span className="text-[10px] font-mono ml-1 text-cyan-500 uppercase tracking-[0.2em]"></span>
               </span>
             </Link>
 
@@ -115,44 +115,44 @@ const AdminNavbar = () => {
 
           {/* RIGHT SIDE: ADMIN PROFILE */}
           <div className="hidden md:flex items-center">
-              <div className="relative">
-                <button 
-                  onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="flex items-center gap-3 focus:outline-none group bg-white/5 hover:bg-white/10 p-2 pr-4 rounded-full border border-white/10 transition-all"
-                >
-                  <div className="w-10 h-10 rounded-full bg-linear-to-r from-cyan-500 to-purple-600 p-0.5">
-                    <div className="w-full h-full rounded-full bg-slate-900 border border-black flex items-center justify-center text-white font-black overflow-hidden uppercase">
-                      {user?.firstName?.charAt(0) || 'A'}
-                    </div>
+            <div className="relative">
+              <button
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="flex items-center gap-3 focus:outline-none group bg-white/5 hover:bg-white/10 p-2 pr-4 rounded-full border border-white/10 transition-all"
+              >
+                <div className="w-10 h-10 rounded-full bg-linear-to-r from-cyan-500 to-purple-600 p-0.5">
+                  <div className="w-full h-full rounded-full bg-slate-900 border border-black flex items-center justify-center text-white font-black overflow-hidden uppercase">
+                    {user?.firstName?.charAt(0) || 'A'}
                   </div>
-                  <div className="text-left">
-                    <p className="text-xs font-black text-white leading-tight uppercase tracking-tight">{user?.firstName}</p>
-                    <p className="text-[9px] font-black text-cyan-500 uppercase tracking-widest">System Admin</p>
-                  </div>
-                </button>
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-black text-white leading-tight uppercase tracking-tight">{user?.firstName}</p>
+                  <p className="text-[9px] font-black text-cyan-500 uppercase tracking-widest">System Admin</p>
+                </div>
+              </button>
 
-                {/* Dropdown Menu */}
-                {showProfileMenu && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setShowProfileMenu(false)}></div>
-                    <div className="absolute right-0 mt-4 w-64 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl py-3 z-20 backdrop-blur-xl animate-in fade-in slide-in-from-top-2">
-                      <div className="px-4 py-3 border-b border-white/5 mb-2">
-                        <div className="flex items-center gap-2 mb-1">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Auth_Token: Verified</p>
-                        </div>
-                        <p className="text-xs font-bold text-white truncate font-mono">{user?.emailId}</p>
+              {/* Dropdown Menu */}
+              {showProfileMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowProfileMenu(false)}></div>
+                  <div className="absolute right-0 mt-4 w-64 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl py-3 z-20 backdrop-blur-xl animate-in fade-in slide-in-from-top-2">
+                    <div className="px-4 py-3 border-b border-white/5 mb-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></div>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Auth_Token: Verified</p>
                       </div>
-                      <Link to="/" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-300 hover:text-cyan-400 hover:bg-white/5 transition-all">
-                        <Terminal size={14} /> Exit to Terminal
-                      </Link>
-                      <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-rose-500 hover:bg-rose-500/10 transition-all">
-                        <LogOut size={14} />LogOut
-                      </button>
+                      <p className="text-xs font-bold text-white truncate font-mono">{user?.emailId}</p>
                     </div>
-                  </>
-                )}
-              </div>
+                    <Link to="/" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-300 hover:text-cyan-400 hover:bg-white/5 transition-all">
+                      <Terminal size={14} /> Exit to Terminal
+                    </Link>
+                    <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-rose-500 hover:bg-rose-500/10 transition-all">
+                      <LogOut size={14} />LogOut
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Mobile Menu Icon */}
@@ -160,15 +160,14 @@ const AdminNavbar = () => {
             <button onClick={() => setIsOpen(!isOpen)} className="text-white p-2">
               {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
-          </div> 
+          </div>
         </div>
       </div>
 
       {/* MOBILE MENU OVERLAY */}
-      <div 
-        className={`md:hidden fixed top-20 left-0 w-full bg-black/95 backdrop-blur-2xl border-b border-white/10 transition-all duration-500 ease-in-out ${
-          isOpen ? 'translate-y-0 opacity-100 visible h-screen' : '-translate-y-10 opacity-0 invisible h-0 overflow-hidden'
-        }`}
+      <div
+        className={`md:hidden fixed top-20 left-0 w-full bg-black/95 backdrop-blur-2xl border-b border-white/10 transition-all duration-500 ease-in-out ${isOpen ? 'translate-y-0 opacity-100 visible h-screen' : '-translate-y-10 opacity-0 invisible h-0 overflow-hidden'
+          }`}
       >
         <div className="flex flex-col items-center gap-10 pt-16">
           <div className="text-center">

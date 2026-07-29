@@ -1000,7 +1000,7 @@
 
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux'; // Hook to trigger state changes
 import Editor from '@monaco-editor/react';
@@ -1017,7 +1017,8 @@ import Editorial from '../component/Editorial';
 import {
   Terminal, Info, Play, Send, Zap,
   MessageSquare, History, BookOpen, CheckCircle2,
-  ArrowRight, Layers, RefreshCcw
+  ArrowRight, Layers, RefreshCcw,
+  Code, ChevronDown, ChevronUp, Settings, Braces, Undo, Maximize2, Lock, CheckSquare
 } from 'lucide-react';
 
 const langMap = { cpp: 'C++', java: 'Java', javascript: 'JavaScript' };
@@ -1058,6 +1059,24 @@ const ProblemPage = () => {
   // Navigation State
   const [activeLeftTab, setActiveLeftTab] = useState('description');
   const [activeRightTab, setActiveRightTab] = useState('code');
+  const [activeBottomTab, setActiveBottomTab] = useState('testcase');
+  const [selectedTestCaseIdx, setSelectedTestCaseIdx] = useState(0);
+  const [cursorPos, setCursorPos] = useState({ line: 1, column: 1 });
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const [isBottomPanelCollapsed, setIsBottomPanelCollapsed] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [editorFontSize, setEditorFontSize] = useState(14);
+  const editorRef = useRef(null);
+
+  const handleEditorDidMount = (editor, monaco) => {
+    editorRef.current = editor;
+    editor.onDidChangeCursorPosition((e) => {
+      setCursorPos({
+        line: e.position.lineNumber,
+        column: e.position.column
+      });
+    });
+  };
 
   // Fetch Problem Data
   useEffect(() => {
@@ -1116,7 +1135,7 @@ const ProblemPage = () => {
     try {
       const response = await axiosClient.post(`/submission/run/${problemId}`, { code, language: selectedLanguage });
       setRunResult(response.data);
-      setActiveRightTab('testcase');
+      setActiveBottomTab('result');
     } catch (error) {
       console.error('Execution Error:', error);
     } finally {
@@ -1145,7 +1164,7 @@ const ProblemPage = () => {
       }
 
       setRunResult(response.data);
-      setActiveRightTab('testcase');
+      setActiveBottomTab('result');
     } catch (error) {
       console.error('Submission Error:', error);
     } finally {
@@ -1334,50 +1353,155 @@ const ProblemPage = () => {
       </div>
 
       {/* RIGHT PANEL */}
-      <div className="w-1/2 flex flex-col bg-black">
-        <div className="flex justify-between items-center bg-[#0a0a0a] border-b border-white/5 px-4 h-14">
-          <div className="flex h-full">
-            {['code', 'testcase'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveRightTab(tab)}
-                className={`px-8 h-full text-[10px] font-black uppercase tracking-[0.2em] relative transition-colors
-                  ${activeRightTab === tab ? 'text-purple-400' : 'text-slate-600 hover:text-slate-400'}`}
-              >
-                {tab}
-                {activeRightTab === tab && <div className="absolute bottom-0 left-0 h-0.5 w-full bg-purple-500 shadow-[0_0_10px_#a855f7]"></div>}
+      <div className="w-1/2 flex flex-col bg-[#050505] h-full min-h-0">
+        
+        {/* CODE EDITOR CONTAINER */}
+        <div className={`flex flex-col min-h-0 bg-[#0c0c0c] border-b border-white/5 transition-all duration-300
+          ${isBottomPanelCollapsed ? 'flex-grow h-[calc(100%-40px)]' : 'h-[60%]'}`}>
+          {/* EDITOR HEADER */}
+          <div className="flex justify-between items-center bg-[#0c0c0c] border-b border-white/5 px-4 h-10 select-none">
+            <div className="flex items-center gap-2">
+              <Code size={14} className="text-emerald-400" />
+              <span className="text-[11px] font-black text-white uppercase tracking-widest">Code</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Maximize2 
+                size={12} 
+                className="text-slate-500 hover:text-slate-300 cursor-pointer" 
+                onClick={() => setIsBottomPanelCollapsed(!isBottomPanelCollapsed)}
+              />
+              <button onClick={() => setIsBottomPanelCollapsed(!isBottomPanelCollapsed)}>
+                {isBottomPanelCollapsed ? (
+                  <ChevronUp size={12} className="text-slate-500 hover:text-slate-300" />
+                ) : (
+                  <ChevronDown size={12} className="text-slate-500 hover:text-slate-300" />
+                )}
               </button>
-            ))}
+            </div>
           </div>
 
-          <div className="flex gap-2">
-            {['cpp', 'java', 'javascript'].map((lang) => (
-              <button
-                key={lang}
-                onClick={() => setSelectedLanguage(lang)}
-                className={`px-3 py-1 text-[9px] font-black rounded border transition-all uppercase tracking-tighter
-                  ${selectedLanguage === lang ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.2)]' : 'border-white/5 text-slate-700 hover:text-slate-400'}`}
-              >
-                {lang === 'cpp' ? 'C++' : lang}
-              </button>
-            ))}
-          </div>
-        </div>
+          {/* EDITOR SUB-HEADER / TOOLBAR */}
+          <div className="flex justify-between items-center bg-[#141414] border-b border-white/5 px-4 h-10 select-none relative z-10">
+            <div className="flex items-center gap-3">
+              {/* Language Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                  className="flex items-center gap-2 px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white bg-[#1e1e1e] border border-white/5 rounded-lg transition-all"
+                >
+                  {langMap[selectedLanguage]}
+                  <ChevronDown size={10} className="text-slate-500" />
+                </button>
+                {isLangDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsLangDropdownOpen(false)}></div>
+                    <div className="absolute left-0 mt-1 w-32 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-50 py-1 overflow-hidden">
+                      {['cpp', 'java', 'javascript'].map((lang) => (
+                        <button
+                          key={lang}
+                          onClick={() => {
+                            setSelectedLanguage(lang);
+                            setIsLangDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-1.5 text-[11px] hover:bg-white/5 transition-all
+                            ${selectedLanguage === lang ? 'text-purple-400 font-bold' : 'text-slate-400'}`}
+                        >
+                          {langMap[lang]}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 px-2 text-[10px] font-bold text-slate-500">
+                <Lock size={10} />
+                <span>Auto</span>
+              </div>
+            </div>
 
-        <div className="flex-1 relative bg-[#050505]">
-          {activeRightTab === 'code' ? (
+            <div className="flex items-center gap-3 relative">
+              {/* Settings Dropdown */}
+              <div className="relative">
+                <button 
+                  onClick={() => setIsSettingsOpen(!isSettingsOpen)} 
+                  title="Settings" 
+                  className="text-slate-500 hover:text-white transition-colors"
+                >
+                  <Settings size={13} />
+                </button>
+                {isSettingsOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsSettingsOpen(false)}></div>
+                    <div className="absolute right-0 mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-50 p-4 font-sans text-xs">
+                      <div className="text-[10px] font-black uppercase text-slate-500 tracking-wider mb-3">Editor Settings</div>
+                      <div className="flex justify-between items-center gap-4">
+                        <span className="text-slate-300 font-semibold">Font Size</span>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => setEditorFontSize(Math.max(12, editorFontSize - 1))}
+                            className="w-6 h-6 rounded bg-[#2a2a2a] text-white font-bold flex items-center justify-center hover:bg-[#3a3a3a]"
+                          >
+                            -
+                          </button>
+                          <span className="text-white w-6 text-center font-mono">{editorFontSize}px</span>
+                          <button 
+                            onClick={() => setEditorFontSize(Math.min(24, editorFontSize + 1))}
+                            className="w-6 h-6 rounded bg-[#2a2a2a] text-white font-bold flex items-center justify-center hover:bg-[#3a3a3a]"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              <button 
+                onClick={() => setCode(problem?.startCode.find(sc => sc.language === langMap[selectedLanguage]).initialCode)} 
+                title="Reset boilerplate" 
+                className="text-slate-500 hover:text-white transition-colors"
+              >
+                <Braces size={13} />
+              </button>
+              
+              <button 
+                onClick={() => {
+                  if (editorRef.current) {
+                    editorRef.current.trigger('keyboard', 'undo', null);
+                  }
+                }}
+                title="Undo changes" 
+                className="text-slate-500 hover:text-white transition-colors"
+              >
+                <Undo size={13} />
+              </button>
+              
+              <button 
+                onClick={() => setIsBottomPanelCollapsed(!isBottomPanelCollapsed)}
+                title="Toggle Panel" 
+                className="text-slate-500 hover:text-white transition-colors"
+              >
+                <Maximize2 size={13} />
+              </button>
+            </div>
+          </div>
+
+          {/* MONACO EDITOR */}
+          <div className="flex-1 relative min-h-0">
             <Editor
               height="100%"
               language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage}
               value={code}
               theme="vs-dark"
               onChange={(val) => setCode(val)}
+              onMount={handleEditorDidMount}
               options={{
-                fontSize: 14,
+                fontSize: editorFontSize,
                 fontFamily: 'JetBrains Mono, Menlo, monospace',
                 minimap: { enabled: false },
                 automaticLayout: true,
-                padding: { top: 24 },
+                padding: { top: 12 },
                 lineNumbersMinChars: 4,
                 scrollBeyondLastLine: false,
                 wordWrap: 'on',
@@ -1385,49 +1509,155 @@ const ProblemPage = () => {
                 cursorSmoothCaretAnimation: true
               }}
             />
-          ) : (
-            <div className="p-8 h-full bg-[#050505] overflow-y-auto custom-scrollbar">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-600 mb-8 flex items-center gap-2">
-                <Terminal size={14} /> Execution Registry
-              </h3>
-              {runResult ? (
-                <div className="space-y-6 animate-in fade-in duration-300">
-                  {runResult.testCase?.map((tc, i) => (
-                    <div key={i} className="group rounded-2xl border border-white/5 bg-white/2 p-6 transition-all hover:bg-white/4">
-                      <div className="flex justify-between items-center mb-6">
-                        <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Case_{i + 1}</span>
-                        <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border shadow-sm ${tc.status_id === 3 ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' : 'text-rose-400 border-rose-500/20 bg-rose-500/5'}`}>
-                          {tc.status_id === 3 ? 'ACCEPTED' : 'FAILURE'}
-                        </div>
+          </div>
+
+          {/* EDITOR STATUS BAR */}
+          <div className="flex justify-between items-center bg-[#0c0c0c] border-t border-white/5 px-4 h-7 text-[10px] text-slate-600 font-mono">
+            <div>Saved</div>
+            <div>Ln {cursorPos.line}, Col {cursorPos.column}</div>
+          </div>
+        </div>
+
+        {/* BOTTOM PANEL (TESTCASE & TEST RESULT) */}
+        <div className={`flex flex-col min-h-0 bg-[#0a0a0a] transition-all duration-300
+          ${isBottomPanelCollapsed ? 'h-10' : 'h-[40%]'}`}>
+          {/* BOTTOM PANEL TABS */}
+          <div className="flex items-center h-10 border-b border-white/5 px-4 bg-[#080808]">
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setActiveBottomTab('testcase');
+                  setIsBottomPanelCollapsed(false);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all
+                  ${activeBottomTab === 'testcase' ? 'text-purple-400 bg-purple-500/5 border border-purple-500/20' : 'text-slate-600 hover:text-slate-400'}`}
+              >
+                <CheckSquare size={12} />
+                <span>Testcase</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveBottomTab('result');
+                  setIsBottomPanelCollapsed(false);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all
+                  ${activeBottomTab === 'result' ? 'text-purple-400 bg-purple-500/5 border border-purple-500/20' : 'text-slate-600 hover:text-slate-400'}`}
+              >
+                <Terminal size={12} />
+                <span>Test Result</span>
+              </button>
+            </div>
+          </div>
+
+          {/* BOTTOM PANEL CONTENT */}
+          {!isBottomPanelCollapsed && (
+            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-[#050505]">
+              {activeBottomTab === 'testcase' ? (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    {problem?.visibleTestCases?.map((tc, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedTestCaseIdx(idx)}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider font-mono transition-all border
+                          ${selectedTestCaseIdx === idx ? 'border-purple-500/30 bg-purple-500/10 text-purple-400' : 'border-white/5 bg-white/2 text-slate-500 hover:text-slate-300'}`}
+                      >
+                        Case {idx + 1}
+                      </button>
+                    ))}
+                  </div>
+                  {problem?.visibleTestCases?.[selectedTestCaseIdx] && (
+                    <div className="grid grid-cols-2 gap-6 font-mono text-[11px] mt-4">
+                      <div className="space-y-2">
+                        <p className="text-[9px] text-slate-600 uppercase font-black tracking-tighter italic">Stdin</p>
+                        <pre className="p-4 bg-black/40 rounded-xl border border-white/5 text-cyan-500/70 overflow-x-auto whitespace-pre-wrap">
+                          {problem.visibleTestCases[selectedTestCaseIdx].input || "NULL"}
+                        </pre>
                       </div>
-                      <div className="grid grid-cols-2 gap-6 font-mono text-[11px]">
-                        <div className="space-y-2">
-                          <p className="text-[9px] text-slate-600 uppercase font-black tracking-tighter italic">Stdin</p>
-                          <div className="p-4 bg-black/40 rounded-xl border border-white/5 text-cyan-500/70 overflow-x-auto">{tc.stdin}</div>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-[9px] text-slate-600 uppercase font-black tracking-tighter italic">Stdout</p>
-                          <div className="p-4 bg-black/40 rounded-xl border border-white/5 text-emerald-500/70 overflow-x-auto">{tc.stdout || "NULL"}</div>
-                        </div>
+                      <div className="space-y-2">
+                        <p className="text-[9px] text-slate-600 uppercase font-black tracking-tighter italic">Expected Output</p>
+                        <pre className="p-4 bg-black/40 rounded-xl border border-white/5 text-amber-500/70 overflow-x-auto whitespace-pre-wrap">
+                          {problem.visibleTestCases[selectedTestCaseIdx].output || "NULL"}
+                        </pre>
                       </div>
-                    </div>
-                  ))}
-                  {runResult.errorMessage && (
-                    <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs font-mono">
-                      {runResult.errorMessage}
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-64 text-slate-700">
-                  <Layers size={40} className="mb-4 opacity-20" />
-                  <p className="text-xs font-mono uppercase tracking-[0.2em] italic">Waiting for Transmission...</p>
-                </div>
+                runResult ? (
+                  <div className="space-y-6 animate-in fade-in duration-300">
+                    {runResult.testCase?.map((tc, i) => {
+                      const isAccepted = tc.status_id === 3;
+                      const isWrongAnswer = tc.status_id === 4;
+                      return (
+                        <div key={i} className="group rounded-2xl border border-white/5 bg-white/2 p-6 transition-all hover:bg-white/4">
+                          <div className="flex justify-between items-center mb-6">
+                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Case_{i + 1}</span>
+                            <div className="flex items-center gap-3">
+                              {!isAccepted && tc.status?.description && (
+                                <span className="text-[9px] font-bold text-rose-500/80 uppercase tracking-wider">
+                                  {tc.status.description}
+                                </span>
+                              )}
+                              <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border shadow-sm ${isAccepted ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' : 'text-rose-400 border-rose-500/20 bg-rose-500/5'}`}>
+                                {isAccepted ? 'ACCEPTED' : 'FAILURE'}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-4">
+                            <div className={`grid ${isWrongAnswer ? 'grid-cols-3' : 'grid-cols-2'} gap-6 font-mono text-[11px]`}>
+                              <div className="space-y-2">
+                                <p className="text-[9px] text-slate-600 uppercase font-black tracking-tighter italic">Stdin</p>
+                                <div className="p-4 bg-black/40 rounded-xl border border-white/5 text-cyan-500/70 overflow-x-auto whitespace-pre-wrap">{tc.stdin || "NULL"}</div>
+                              </div>
+                              <div className="space-y-2">
+                                <p className="text-[9px] text-slate-600 uppercase font-black tracking-tighter italic">Stdout</p>
+                                <div className="p-4 bg-black/40 rounded-xl border border-white/5 text-emerald-500/70 overflow-x-auto whitespace-pre-wrap">{tc.stdout || "NULL"}</div>
+                              </div>
+                              {isWrongAnswer && (
+                                <div className="space-y-2">
+                                  <p className="text-[9px] text-slate-600 uppercase font-black tracking-tighter italic">Expected Output</p>
+                                  <div className="p-4 bg-black/40 rounded-xl border border-white/5 text-amber-500/70 overflow-x-auto whitespace-pre-wrap">{tc.expected_output || "NULL"}</div>
+                                </div>
+                              )}
+                            </div>
+                            {tc.compile_output && (
+                              <div className="space-y-2 mt-4">
+                                <p className="text-[9px] text-rose-500 uppercase font-black tracking-tighter italic">Compiler Message</p>
+                                <pre className="p-4 bg-rose-950/20 rounded-xl border border-rose-500/20 text-rose-400 text-xs font-mono overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                                  {tc.compile_output}
+                                </pre>
+                              </div>
+                            )}
+                            {tc.stderr && (
+                              <div className="space-y-2 mt-4">
+                                <p className="text-[9px] text-rose-500 uppercase font-black tracking-tighter italic">Runtime Error / Stderr</p>
+                                <pre className="p-4 bg-rose-950/20 rounded-xl border border-rose-500/20 text-rose-400 text-xs font-mono overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                                  {tc.stderr}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {runResult.errorMessage && (
+                      <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs font-mono whitespace-pre-wrap">
+                        {runResult.errorMessage}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-slate-700 py-10">
+                    <p className="text-xs font-mono uppercase tracking-[0.2em] italic">You must run your code first</p>
+                  </div>
+                )
               )}
             </div>
           )}
         </div>
 
+        {/* BOTTOM FOOTER CONTROLS */}
         <div className="p-4 bg-[#0a0a0a] border-t border-white/5 flex justify-between items-center px-8 h-20">
           <button
             onClick={() => setCode(problem?.startCode.find(sc => sc.language === langMap[selectedLanguage]).initialCode)}

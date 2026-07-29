@@ -225,6 +225,7 @@ const submitCode = async (req, res) => {
       accepted,
       totalTestCases: submittedResult.testCasesTotal,
       passedTestCases: testCasesPassed,
+      testCase: testResult,
       runtime,
       memory
     });
