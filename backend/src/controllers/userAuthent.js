@@ -83,8 +83,12 @@ import redisClient from "../config/redis.js";
 import User from "../models/user.js";
 import validate from "../utils/validator.js";
 
-// Session cookie: httpOnly so page scripts (and XSS) can't read the token
-const COOKIE_OPTIONS = { maxAge: 60 * 60 * 1000, httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" };
+// Session cookie: httpOnly so page scripts (and XSS) can't read the token.
+// The frontend (Netlify/Vercel) and API (Render) are on different sites, so the cookie
+// must be SameSite=None, which browsers only accept together with Secure (HTTPS;
+// browsers also allow it on http://localhost).
+const CLEAR_COOKIE_OPTIONS = { httpOnly: true, secure: true, sameSite: "none" };
+const COOKIE_OPTIONS = { ...CLEAR_COOKIE_OPTIONS, maxAge: 60 * 60 * 1000 };
 
 // First names must be 3–20 characters (see the user model)
 const fitFirstName = (...candidates) => {
@@ -236,7 +240,7 @@ const logout = async (req, res) => {
       await redisClient.expireAt(`token:${token}`, payload.exp);
     }
 
-    res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: COOKIE_OPTIONS.secure });
+    res.clearCookie("token", CLEAR_COOKIE_OPTIONS);
     res.send("Logged Out Successfully");
   } catch (error) {
     res.status(503).send("Error: " + error.message);
