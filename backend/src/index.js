@@ -14,8 +14,20 @@ import paymentRouter from "./routes/payment.js";
 import interviewRouter from "./routes/interview.js";
 const app=express()
 
+// Allowed frontends: FRONTEND_URL (comma-separated for several), plus any localhost port in development
+// so Vite falling back to 5174/5175 doesn't break the app
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
+    .split(',').map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean)
+const isDev = process.env.NODE_ENV !== 'production'
+
 app.use(cors({
-    origin:'http://localhost:5173',
+    origin: (origin, callback) => {
+        // Same-origin requests and tools like curl send no Origin header
+        if (!origin || allowedOrigins.includes(origin) || (isDev && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin))) {
+            return callback(null, true)
+        }
+        callback(null, false)
+    },
     credentials:true 
 }))
 
@@ -34,8 +46,16 @@ app.use('/interview', interviewRouter)
 
 console.log("PORT:",process.env.PORT)
 const InitalizeConnection=async()=>{
-   app.listen(process.env.PORT,()=>{
-    console.log("Sever listening at port number",+process.env.PORT);
+   const port = Number(process.env.PORT) || 4000
+   const server = app.listen(port,()=>{
+    console.log("Server listening at port number", port);
+   })
+   server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${port} is already in use by another program. Stop it, or set a different PORT in backend/.env (and VITE_API_URL in frontend/.env to match).`)
+        process.exit(1)
+    }
+    throw err
    })
 
    try {

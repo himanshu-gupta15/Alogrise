@@ -1,191 +1,174 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-    Plus, Edit, Trash2, Video, ShieldCheck, Activity,
-    Users, FileCode, CheckCircle, ArrowUpRight, Trophy, ClipboardList
-} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { BriefcaseBusiness, Check, ChevronRight, CircleCheck, CirclePlus, MonitorPlay, Pencil, Plus, Trash2, Trophy, UsersRound } from 'lucide-react';
 import axiosClient from '../utils/axiosClient';
+import { Spinner } from '../component/ui';
+import { capitalize, difficultyColor, formatNumber, timeAgo } from '../utils/format';
+
+const MODULES = [
+  { icon: CirclePlus, title: 'Create problem', desc: 'Publishes immediately', to: '/admin/create' },
+  { icon: Pencil, title: 'Edit problems', desc: 'Statements, tests, tags', to: '/admin/update' },
+  { icon: Trash2, title: 'Delete problems', desc: 'Remove from the platform', to: '/admin/delete' },
+  { icon: MonitorPlay, title: 'Video solutions', desc: 'Upload walkthroughs', to: '/admin/video' },
+  { icon: Trophy, title: 'Contest builder', desc: 'Schedule, assign problems', to: '/admin/contest' },
+  { icon: BriefcaseBusiness, title: 'Interview packs', desc: 'Sets and pricing', to: '/admin/interview' },
+  { icon: UsersRound, title: 'Users & roles', desc: 'Access control', to: '/admin/user-management' },
+];
+
+const isLive = (p) => p.status === 'approved' || p.status == null;
+
+const handleOf = (creator) => {
+  if (!creator) return null;
+  const name = [creator.firstName, creator.lastName].filter(Boolean).join(' ');
+  return name || creator.emailId?.split('@')[0] || null;
+};
 
 function Admin() {
-    const navigate = useNavigate();
-    const [pendingProblems, setPendingProblems] = useState([]);
-    const [loadingPending, setLoadingPending] = useState(false);
+  const [pending, setPending] = useState([]);
+  const [loadingPending, setLoadingPending] = useState(true);
+  const [stats, setStats] = useState({ problems: null, users: null, contests: null });
+  const [busyId, setBusyId] = useState('');
+  const [toast, setToast] = useState('');
 
-    useEffect(() => {
-        (async () => {
-            setLoadingPending(true);
-            try {
-                const { data } = await axiosClient.get('/problem/pending');
-                setPendingProblems(data || []);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoadingPending(false);
-            }
-        })();
-    }, []);
+  useEffect(() => {
+    axiosClient
+      .get('/problem/pending')
+      .then(({ data }) => setPending(Array.isArray(data) ? data : []))
+      .catch(() => setToast('Could not load the review queue.'))
+      .finally(() => setLoadingPending(false));
 
-    const approve = async (id) => {
-        if (!confirm('Approve this problem?')) return;
-        try {
-            await axiosClient.put(`/problem/update/${id}`, { status: 'approved' });
-            setPendingProblems((prev) => prev.filter((p) => p._id !== id));
-        } catch (err) {
-            console.error(err);
-            alert('Approve failed');
-        }
-    };
+    Promise.all([
+      axiosClient.get('/problem/getAllProblem').catch(() => null),
+      axiosClient.get('/user/admin/users').catch(() => null),
+      axiosClient.get('/contest/all').catch(() => null),
+    ]).then(([problems, users, contests]) => {
+      setStats({
+        problems: Array.isArray(problems?.data) ? problems.data.filter(isLive).length : null,
+        users: users?.data?.count ?? null,
+        contests: Array.isArray(contests?.data) ? contests.data.length : null,
+      });
+    });
+  }, []);
 
-    const reject = async (id) => {
-        if (!confirm('Reject this problem?')) return;
-        try {
-            await axiosClient.put(`/problem/update/${id}`, { status: 'rejected' });
-            setPendingProblems((prev) => prev.filter((p) => p._id !== id));
-        } catch (err) {
-            console.error(err);
-            alert('Reject failed');
-        }
-    };
+  // Oldest submissions first, so nothing waits too long
+  const queue = useMemo(() => [...pending].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)), [pending]);
+  const oldest = queue[0]?.createdAt;
 
-    const stats = [
-        { label: "Total Problems", value: "542", icon: FileCode, color: "text-cyan-400", glow: "shadow-cyan-500/20" },
-        { label: "Active Users", value: "12.8k", icon: Users, color: "text-purple-400", glow: "shadow-purple-500/20" },
-        { label: "Submissions Today", value: "1,204", icon: Activity, color: "text-emerald-400", glow: "shadow-emerald-500/20" },
-        { label: "Server Uptime", value: "99.9%", icon: CheckCircle, color: "text-blue-400", glow: "shadow-blue-500/20" },
-    ];
+  const review = async (problem, status) => {
+    try {
+      setBusyId(problem._id);
+      await axiosClient.put(`/problem/update/${problem._id}`, { status });
+      setPending((prev) => prev.filter((p) => p._id !== problem._id));
+      if (status === 'approved') setStats((s) => ({ ...s, problems: s.problems == null ? s.problems : s.problems + 1 }));
+      setToast(status === 'approved' ? `Approved “${problem.title}” — now live` : `Rejected “${problem.title}”`);
+    } catch {
+      setToast(`Could not update “${problem.title}”. Try again.`);
+    } finally {
+      setBusyId('');
+    }
+  };
 
-    const adminOptions = [
-        { id: 'create', title: "Create Problem", description: 'Add a new coding problem to the platform', icon: Plus, color: 'from-emerald-400 to-cyan-500', glow: 'shadow-emerald-500/40', route: '/admin/create' },
-        { id: 'update', title: 'Update Problem', description: 'Edit existing Problem and their details', icon: Edit, color: 'from-amber-400 to-orange-500', glow: 'shadow-orange-500/40', route: '/admin/update' },
-        { id: 'delete', title: 'Delete Problem', description: 'Remove problems from the platform', icon: Trash2, color: 'from-rose-400 to-red-600', glow: 'shadow-red-500/40', route: '/admin/delete' },
-        { id: 'video', title: 'Video Solutions', description: 'Upload and manage video tutorials', icon: Video, color: 'from-purple-400 to-fuchsia-600', glow: 'shadow-fuchsia-500/40', route: '/admin/video' },
-        { id: 'contest-builder', title: 'Contest Builder', description: 'Create contests and assign problems to them', icon: Trophy, color: 'from-cyan-400 to-blue-500', glow: 'shadow-cyan-500/40', route: '/admin/contest' },
-        { id: 'interview-control', title: 'Interview Control', description: 'Manage mock assessment packs and pricing', icon: ClipboardList, color: 'from-amber-300 to-orange-500', glow: 'shadow-amber-500/40', route: '/admin/interview' },
-        { id: 'user-management', title: "User Management", description: "Assign roles and monitor access", icon: Users, color: "from-blue-500 to-indigo-600", glow: 'shadow-blue-500/40', route: "/admin/user-management" },
-    ];
+  const show = (v) => (v == null ? '—' : formatNumber(v));
 
-    return (
-        <div className="min-h-screen bg-[#020202] text-white relative overflow-hidden pb-20 selection:bg-cyan-500/30">
-            {/* Background Atmosphere */}
-            <div className="absolute top-0 right-0 w-200 h-200 bg-cyan-500/5 blur-[150px] rounded-full pointer-events-none animate-pulse"></div>
-            <div className="absolute bottom-0 left-0 w-200 h-200 bg-purple-500/5 blur-[150px] rounded-full pointer-events-none"></div>
+  const cells = [
+    ['Live problems', show(stats.problems)],
+    ['Registered users', show(stats.users)],
+    ['Contests', show(stats.contests)],
+    ['Awaiting review', loadingPending ? '—' : pending.length, oldest ? `oldest ${timeAgo(oldest)}` : null],
+  ];
 
-            <div className="container mx-auto px-6 pt-16 relative z-10 perspective-1000">
-
-                {/* 1. Header Section */}
-                <div className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-8 animate-in fade-in slide-in-from-top duration-700">
-                    <div>
-                        <div className="flex items-center gap-3 mb-4">
-
-
-                        </div>
-                        <h1 className="text-6xl font-black tracking-tighter">
-                            Command <span className="text-slate-700">Center</span>
-                        </h1>
-                    </div>
-
-                </div>
-
-                {/* 2. Quick Stats Grid - Floating Effect */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-                    {stats.map((stat, i) => (
-                        <div key={i}
-                            style={{ animationDelay: `${i * 100}ms` }}
-                            className="bg-white/3 border border-white/10 p-6 rounded-2xl backdrop-blur-md transform transition-all duration-500 hover:bg-white/7 hover:-translate-y-2 hover:shadow-2xl animate-in zoom-in-95"
-                        >
-                            <div className={`${stat.color} mb-4 p-2 bg-white/5 inline-block rounded-lg shadow-inner`}>
-                                <stat.icon size={20} />
-                            </div>
-                            <p className="text-slate-500 text-[10px] uppercase font-black tracking-widest">{stat.label}</p>
-                            <p className="text-3xl font-black text-white mt-1">{stat.value}</p>
-                        </div>
-                    ))}
-                </div>
-
-                {/* 3. Action Grid - 3D Perspective Transform */}
-                <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-[0.4em] mb-8 ml-1">Management Modules</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-20">
-                    {adminOptions.map((option, i) => (
-                        <div
-                            key={option.id}
-                            onClick={() => navigate(option.route)}
-                            style={{ animationDelay: `${i * 150}ms` }}
-                            className="group relative cursor-pointer preserve-3d transition-all duration-700 hover:transform-[rotateX(10deg)_rotateY(-10deg)]"
-                        >
-                            {/* Card Glow Background */}
-                            <div className="absolute -inset-1 bg-linear-to-br opacity-0 group-hover:opacity-20 transition-opacity duration-500 rounded-4xl blur-xl bg-white"></div>
-
-                            <div className="relative h-full bg-slate-900/40 backdrop-blur-2xl p-8 rounded-4xl border border-white/10 flex flex-col items-center text-center shadow-2xl transition-all duration-500 group-hover:translate-z-10 group-hover:border-white/20">
-
-                                <div className={`p-5 rounded-2xl mb-8 bg-linear-to-br ${option.color} shadow-2xl ${option.glow} transform transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6`}>
-                                    <option.icon size={32} className="text-black" />
-                                </div>
-
-                                <h2 className="text-xl font-black text-white mb-3 tracking-tight uppercase group-hover:text-cyan-400 transition-colors">
-                                    {option.title}
-                                </h2>
-                                <p className="text-slate-500 text-xs leading-relaxed mb-8 px-2 font-medium italic">
-                                    {option.description}
-                                </p>
-
-                                <div className="mt-auto w-full pt-6 border-t border-white/5 flex items-center justify-center gap-2 text-[9px] font-black tracking-[0.3em] text-slate-600 group-hover:text-cyan-400 transition-all uppercase">
-                                    Execute Module <ArrowUpRight size={12} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="bg-white/3 border border-white/5 rounded-2xl p-6 backdrop-blur-3xl animate-in fade-in slide-in-from-bottom duration-1000 shadow-inner">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-3">
-                            <Activity size={18} className="text-cyan-500" /> Pending Problem Submissions
-                        </h3>
-                        <div>
-                            <button
-                                onClick={async () => {
-                                    setLoadingPending(true);
-                                    try {
-                                        const { data } = await axiosClient.get("/problem/pending");
-                                        setPendingProblems(data || []);
-                                    } catch (err) {
-                                        console.error(err);
-                                        alert("Failed to load pending problems");
-                                    } finally {
-                                        setLoadingPending(false);
-                                    }
-                                }}
-                                className="px-3 py-1 rounded bg-white/5 hover:bg-white/10"
-                            >
-                                Refresh
-                            </button>
-                        </div>
-                    </div>
-
-                    {loadingPending ? (
-                        <p className="text-sm text-slate-400">Loading...</p>
-                    ) : pendingProblems.length === 0 ? (
-                        <p className="text-sm text-slate-400">No pending submissions.</p>
-                    ) : (
-                        <div className="space-y-4">
-                            {pendingProblems.map((p) => (
-                                <div key={p._id} className="flex items-center justify-between p-3 rounded-lg bg-white/3">
-                                    <div>
-                                        <div className="text-white font-bold">{p.title}</div>
-                                        <div className="text-slate-400 text-sm">{p.difficulty} • by {p.problemCreator?.name || p.problemCreator?.email}</div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <button onClick={() => approve(p._id)} className="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500">Approve</button>
-                                        <button onClick={() => reject(p._id)} className="px-3 py-1 rounded bg-rose-600 hover:bg-rose-500">Reject</button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
+  return (
+    <div className="page fade-in">
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="flex-1">
+          <div className="eyebrow eyebrow-accent text-xs">Admin</div>
+          <h1 className="page-title mt-1">Overview</h1>
         </div>
-    );
+        <Link to="/admin/create" className="btn btn-primary">
+          <Plus size={16} /> Create problem
+        </Link>
+      </div>
+
+      <div className="stat-grid mt-6 grid-cols-2 md:grid-cols-4">
+        {cells.map(([label, value, note], i) => (
+          <div key={label}>
+            <div className="text-[12.5px] text-neutral-400">{label}</div>
+            <div className="mt-1.5 flex items-baseline gap-2">
+              <span className="tnum text-[24px] font-medium leading-none" style={i === 3 && pending.length ? { color: 'var(--color-warn)' } : undefined}>
+                {value}
+              </span>
+              {note && <span className="text-xs text-neutral-400">{note}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[15px] font-medium">Review queue</span>
+            <span className="tag tag-neutral tnum">{pending.length}</span>
+            <span className="flex-1" />
+            {toast ? <span className="text-[13px] text-accent-300">{toast}</span> : <span className="text-xs text-neutral-500">Oldest first</span>}
+          </div>
+
+          {loadingPending ? (
+            <div className="flex items-center gap-2 py-8 text-sm text-neutral-400">
+              <Spinner size={16} /> Loading review queue…
+            </div>
+          ) : queue.length === 0 ? (
+            <div className="flex items-center gap-3 py-10 text-neutral-300">
+              <CircleCheck size={20} style={{ color: 'var(--color-ok)' }} /> Queue clear — nothing waiting for review.
+            </div>
+          ) : (
+            queue.map((p) => (
+              <div key={p._id} className="row-rule grid items-center gap-3 py-3.5 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <div className="min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <span className="truncate text-[15px] font-medium">{p.title}</span>
+                    <span className="text-[12.5px]" style={{ color: difficultyColor(p.difficulty) }}>{capitalize(p.difficulty)}</span>
+                  </div>
+                  <div className="mt-0.5 text-[12.5px] text-neutral-500">
+                    <span className="capitalize">{(p.tags || []).join(' · ')}</span>
+                    {handleOf(p.problemCreator) ? ` · ${handleOf(p.problemCreator)}` : ''}
+                    {p.createdAt ? ` · ${timeAgo(p.createdAt)}` : ''}
+                  </div>
+                </div>
+                <span className="flex gap-1.5">
+                  <Link to={`/problem/${p._id}`} className="btn">Preview</Link>
+                  <button type="button" className="btn btn-secondary" disabled={busyId === p._id} onClick={() => review(p, 'rejected')}>
+                    Reject
+                  </button>
+                  <button type="button" className="btn btn-primary" disabled={busyId === p._id} onClick={() => review(p, 'approved')}>
+                    <Check size={15} /> Approve
+                  </button>
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+
+        <aside>
+          <div className="text-[15px] font-medium">Manage</div>
+          <div className="mt-2">
+            {MODULES.map((m) => {
+              const Icon = m.icon;
+              return (
+                <Link key={m.to} to={m.to} className="flex items-center gap-3 rounded-lg px-2 py-2.5 text-text hover:bg-white/4">
+                  <Icon size={17} className="flex-none text-neutral-400" />
+                  <span className="flex-1">
+                    <span className="block text-[14px]">{m.title}</span>
+                    <span className="block text-[12.5px] text-neutral-500">{m.desc}</span>
+                  </span>
+                  <ChevronRight size={15} className="text-neutral-600" />
+                </Link>
+              );
+            })}
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
 }
 
 export default Admin;

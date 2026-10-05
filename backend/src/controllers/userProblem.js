@@ -42,11 +42,18 @@ const normalizeTags = (tags) => {
  */
 const updateGlobalRank = async () => {
   try {
-    const users = await User.find({}).sort({ xp: -1 });
-    const updatePromises = users.map((user, index) => {
-      return User.findByIdAndUpdate(user._id, { globalRank: index + 1 });
-    });
-    await Promise.all(updatePromises);
+    // Only fetch the fields needed; _id breaks ties so ranks are stable between runs
+    const users = await User.find({}).select("_id globalRank").sort({ xp: -1, _id: 1 }).lean();
+
+    // Only write ranks that actually changed, in a single round trip
+    const ops = users
+      .map((user, index) => ({ user, rank: index + 1 }))
+      .filter(({ user, rank }) => user.globalRank !== rank)
+      .map(({ user, rank }) => ({
+        updateOne: { filter: { _id: user._id }, update: { $set: { globalRank: rank } } },
+      }));
+
+    if (ops.length > 0) await User.bulkWrite(ops, { ordered: false });
   } catch (err) {
     console.error("Rank Update Error:", err);
   }
@@ -81,16 +88,26 @@ const handleStreakAndSolved = async (userId, problemId) => {
     // If diffDays === 0, streak remains unchanged as they already solved one today
   }
 
+  // XP is only awarded the first time a problem is solved
+  const alreadySolved = (user.problemSolved || []).some((id) => id.toString() === problemId.toString());
+
   await User.findByIdAndUpdate(userId, {
     $addToSet: { problemSolved: problemId },
     $set: {
       streak: newStreak,
       lastSolvedDate: now,
     },
-    $inc: { xp: 10 },
+    ...(alreadySolved ? {} : { $inc: { xp: 10 } }),
   });
 
-  await updateGlobalRank();
+  if (!alreadySolved) await updateGlobalRank();
+
+  const updatedUser = await User.findById(userId).select("streak xp globalRank");
+  return {
+    streak: updatedUser?.streak || 0,
+    xp: updatedUser?.xp || 0,
+    globalRank: updatedUser?.globalRank || 0,
+  };
 };
 
 /* ================= CORE CONTROLLERS ================= */
@@ -160,7 +177,7 @@ const getUserProblems = async (req, res) => {
 
 const getPendingProblems = async (req, res) => {
   try {
-    const problems = await Problem.find({ status: 'pending' }).select("_id title difficulty tags problemCreator createdAt").populate('problemCreator','name email');
+    const problems = await Problem.find({ status: 'pending' }).select("_id title difficulty tags problemCreator createdAt").populate('problemCreator','firstName lastName emailId');
     res.status(200).send(problems);
   } catch (err) {
     res.status(500).send('Error: ' + err);
@@ -188,6 +205,7 @@ const updateProblem = async (req, res) => {
     }
 
     const newProblem = await Problem.findByIdAndUpdate(id, payload, { runValidators: true, new: true });
+    if (!newProblem) return res.status(404).send("Problem is Missing");
     res.status(200).send(newProblem);
   } catch (err) {
     res.status(500).send("Error: " + err);
@@ -209,7 +227,7 @@ const deleteProblem = async (req, res) => {
 const getProblemById = async (req, res) => {
   const { id } = req.params;
   try {
-    const getProblem = await Problem.findById(id).select("_id title description difficulty tags companies visibleTestCases startCode referenceSolution status problemCreator");
+    const getProblem = await Problem.findById(id).select("_id title description difficulty tags companies visibleTestCases hiddenTestCases startCode referenceSolution status problemCreator");
     if (!getProblem) return res.status(404).send("Problem is Missing");
 
     const isAdmin = req.result?.role === "admin";
@@ -220,10 +238,18 @@ const getProblemById = async (req, res) => {
       return res.status(403).send("Problem is not published yet");
     }
 
-    const videos = await SolutionVideo.findOne({ problemId: id });
+    // Hidden test cases and reference solutions are only for admins (the update form needs them)
+    const problemData = getProblem.toObject();
+    if (!isAdmin) {
+      delete problemData.hiddenTestCases;
+      delete problemData.referenceSolution;
+    }
+
+    // Newest upload wins when a problem has more than one video
+    const videos = await SolutionVideo.findOne({ problemId: id }).sort({ createdAt: -1 });
     const responseData = videos
-      ? { ...getProblem.toObject(), secureUrl: videos.secureUrl, thumbnailUrl: videos.thumbnailUrl, duration: videos.duration }
-      : getProblem;
+      ? { ...problemData, secureUrl: videos.secureUrl, thumbnailUrl: videos.thumbnailUrl, duration: videos.duration }
+      : problemData;
 
     res.status(200).send(responseData);
   } catch (err) {
@@ -284,4 +310,21 @@ const submittedProblem = async (req, res) => {
   }
 };
 
-export { createProblem, updateProblem, deleteProblem, getProblemById, getAllProblem, solvedAllProblembyUser, submittedProblem, handleStreakAndSolved, getUserProblems, getPendingProblems };
+// The logged-in user's submissions from the last year, newest first (for the profile page)
+const getMySubmissions = async (req, res) => {
+  try {
+    const since = new Date();
+    since.setFullYear(since.getFullYear() - 1);
+    const submissions = await Submission.find({ userId: req.result._id, createdAt: { $gte: since } })
+      .select("problemId status language runtime createdAt")
+      .populate("problemId", "title difficulty")
+      .sort({ createdAt: -1 })
+      .limit(2000)
+      .lean();
+    res.status(200).send(submissions);
+  } catch (err) {
+    res.status(500).send("Error: " + err.message);
+  }
+};
+
+export { getMySubmissions, createProblem, updateProblem, deleteProblem, getProblemById, getAllProblem, solvedAllProblembyUser, submittedProblem, handleStreakAndSolved, getUserProblems, getPendingProblems };

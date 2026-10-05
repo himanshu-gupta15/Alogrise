@@ -1,400 +1,339 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { CalendarDays, Timer, Users, Flag, Search, Trophy, Sparkles, X } from "lucide-react";
-import axiosClient from "../utils/axiosClient";
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Calendar, Clock, Puzzle, Users, X } from 'lucide-react';
+import axiosClient from '../utils/axiosClient';
+import { Notice, PageLoader, Spinner } from './ui';
+import { capitalize, difficultyColor, formatNumber, pad2 } from '../utils/format';
 
-const filters = ["all", "live", "upcoming", "ended"];
+const TABS = ['Upcoming', 'Live', 'Past'];
 
-const statusStyle = {
-  live: "text-emerald-300 border-emerald-400/40 bg-emerald-500/10",
-  upcoming: "text-cyan-300 border-cyan-400/40 bg-cyan-500/10",
-  ended: "text-slate-300 border-white/20 bg-white/5",
+const formatWhen = (value) =>
+  new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(value));
+
+const durationMinutes = (c) => Math.max(0, Math.round((new Date(c.endTime) - new Date(c.startTime)) / 60000));
+
+const formatDuration = (minutes) => (minutes >= 120 && minutes % 60 === 0 ? `${minutes / 60} hours` : `${minutes} minutes`);
+
+const splitCountdown = (ms) => {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return [
+    { v: pad2(Math.floor(s / 86400)), l: 'Days' },
+    { v: pad2(Math.floor(s / 3600) % 24), l: 'Hours' },
+    { v: pad2(Math.floor(s / 60) % 60), l: 'Minutes' },
+    { v: pad2(s % 60), l: 'Seconds' },
+  ];
 };
 
-const formatDate = (dateValue) => {
-  const date = new Date(dateValue);
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+const shortCountdown = (ms) => {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor(s / 60) % 60;
+  return h > 0 ? `${h}h ${pad2(m)}m` : `${m}m ${pad2(s % 60)}s`;
+};
+
+const statusAt = (c, now) => {
+  const start = new Date(c.startTime).getTime();
+  const end = new Date(c.endTime).getTime();
+  return now < start ? 'upcoming' : now > end ? 'ended' : 'live';
+};
+
+const VIRTUAL_KEY = (id) => `virtualContest:${id}`;
+
+// A started virtual run is kept in the browser until its clock runs out
+const readVirtual = (id) => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(VIRTUAL_KEY(id)) || 'null');
+    return saved && new Date(saved.virtualEndTime).getTime() > Date.now() ? saved : null;
+  } catch {
+    return null;
+  }
+};
+
+/* Contest room: the contest's problems with its clock (live or virtual) */
+const ContestRoom = ({ room, now, onClose }) => {
+  const remaining = new Date(room.endsAt).getTime() - now;
+  return (
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div className="dialog w-[min(640px,100%)]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start gap-3">
+          <div className="flex-1">
+            <div className="eyebrow eyebrow-accent text-xs">{room.virtual ? 'Virtual contest' : 'Live contest'}</div>
+            <div className="mt-1 text-[22px]">{room.title}</div>
+          </div>
+          <button type="button" className="btn btn-icon" onClick={onClose} aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="tnum text-sm text-neutral-300">
+          {remaining > 0 ? (
+            <>
+              Ends in <span className="text-accent">{shortCountdown(remaining)}</span>
+            </>
+          ) : (
+            'Time is up — you can still practice these problems.'
+          )}
+        </div>
+        {room.loading ? (
+          <div className="flex items-center gap-2 py-4 text-sm text-neutral-400">
+            <Spinner size={16} /> Loading problems…
+          </div>
+        ) : (
+          <div>
+            {(room.problems || []).map((p, i) => (
+              <Link key={p._id} to={`/problem/${p._id}`} className="row-rule flex items-center gap-4 py-3.5 text-text hover:text-accent">
+                <span className="tnum w-6 text-accent">{String.fromCharCode(65 + i)}</span>
+                <span className="flex-1">{p.title}</span>
+                <span className="text-sm" style={{ color: difficultyColor(p.difficulty) }}>
+                  {capitalize(p.difficulty)}
+                </span>
+                <ArrowRight size={15} className="text-neutral-500" />
+              </Link>
+            ))}
+            {!room.problems?.length && <p className="py-4 text-sm text-neutral-400">This contest has no problems.</p>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 const Contest = () => {
-  const navigate = useNavigate();
-  const [contests, setContests] = useState([]);
+  const [contestData, setContests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("soonest");
-  const [joiningId, setJoiningId] = useState("");
-  const [startingVirtualId, setStartingVirtualId] = useState("");
+  const [tab, setTab] = useState('Upcoming');
+  const [busyId, setBusyId] = useState('');
   const [notice, setNotice] = useState(null);
+  const [room, setRoom] = useState(null);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     const fetchContests = async () => {
       try {
-        const { data } = await axiosClient.get("/contest/all");
-        setContests(data || []);
+        const { data } = await axiosClient.get('/contest/all');
+        setContests(Array.isArray(data) ? data : []);
       } catch (error) {
-        console.error("Failed to fetch contests", error);
-        setNotice({ type: "error", message: "Could not load contests. Please refresh." });
+        console.error('Failed to fetch contests', error);
+        setNotice({ type: 'error', message: 'Could not load contests. Please refresh.' });
       } finally {
         setLoading(false);
       }
     };
-
     fetchContests();
   }, []);
 
-  // Tick every second so countdowns update
+  // Tick every second so countdowns and statuses update without a refresh
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  useEffect(() => {
-    if (!notice) return;
-    const timer = setTimeout(() => setNotice(null), 3500);
-    return () => clearTimeout(timer);
-  }, [notice]);
+  const contests = useMemo(
+    () =>
+      contestData.map((c) => {
+        const status = statusAt(c, now);
+        return { ...c, status, canStartVirtual: status === 'ended' && !c.joined };
+      }),
+    [contestData, now]
+  );
 
-  const formatRemaining = (ms) => {
-    if (ms <= 0) return "00:00:00";
-    const totalSeconds = Math.floor(ms / 1000);
-    const days = Math.floor(totalSeconds / (24 * 3600));
-    const hours = Math.floor((totalSeconds % (24 * 3600)) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    const two = (v) => String(v).padStart(2, "0");
-    if (days > 0) return `${days}d ${two(hours)}:${two(minutes)}:${two(seconds)}`;
-    return `${two(hours)}:${two(minutes)}:${two(seconds)}`;
-  };
-
-  const visibleContests = useMemo(() => {
-    let result = contests;
-
-    if (activeFilter !== "all") {
-      result = result.filter((contest) => contest.status === activeFilter);
-    }
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (contest) =>
-          contest.title?.toLowerCase().includes(query) ||
-          contest.description?.toLowerCase().includes(query)
-      );
-    }
-
-    const sorted = [...result].sort((a, b) => {
-      if (sortBy === "latest") return new Date(b.startTime) - new Date(a.startTime);
-      if (sortBy === "participants") return (b.participantCount || 0) - (a.participantCount || 0);
-      if (sortBy === "problems") return (b.problemCount || 0) - (a.problemCount || 0);
-      return new Date(a.startTime) - new Date(b.startTime);
-    });
-
-    return sorted;
-  }, [activeFilter, contests, searchQuery, sortBy]);
-
-  const filterCounts = useMemo(() => {
-    return contests.reduce(
-      (acc, contest) => {
-        acc.all += 1;
-        if (contest.status === "live") acc.live += 1;
-        if (contest.status === "upcoming") acc.upcoming += 1;
-        if (contest.status === "ended") acc.ended += 1;
-        return acc;
-      },
-      { all: 0, live: 0, upcoming: 0, ended: 0 }
-    );
+  // Featured: the live contest if there is one, else the next upcoming one
+  const featured = useMemo(() => {
+    const live = contests.filter((c) => c.status === 'live').sort((a, b) => new Date(a.endTime) - new Date(b.endTime))[0];
+    if (live) return live;
+    return contests.filter((c) => c.status === 'upcoming').sort((a, b) => new Date(a.startTime) - new Date(b.startTime))[0] || null;
   }, [contests]);
 
-  const summary = useMemo(() => {
-    const joined = contests.filter((contest) => contest.joined).length;
-    const virtualReady = contests.filter((contest) => contest.canStartVirtual).length;
-    return {
-      joined,
-      virtualReady,
-      live: filterCounts.live,
-      upcoming: filterCounts.upcoming,
-    };
-  }, [contests, filterCounts]);
+  const rows = useMemo(() => {
+    const key = { Upcoming: 'upcoming', Live: 'live', Past: 'ended' }[tab];
+    const list = contests.filter((c) => c.status === key);
+    return key === 'ended'
+      ? list.sort((a, b) => new Date(b.startTime) - new Date(a.startTime))
+      : list.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  }, [contests, tab]);
 
-  const handleJoin = async (contestId) => {
+  const record = useMemo(
+    () => ({
+      joined: contests.filter((c) => c.joined).length,
+      virtual: contests.filter((c) => c.canStartVirtual).length,
+      upcoming: contests.filter((c) => c.status === 'upcoming').length,
+    }),
+    [contests]
+  );
+
+  const openRoom = async (contest, { virtual = false, endsAt }) => {
+    setRoom({ id: contest._id, title: contest.title, virtual, endsAt, loading: true, problems: [] });
     try {
-      setJoiningId(contestId);
-      await axiosClient.post(`/contest/join/${contestId}`);
+      const { data } = await axiosClient.get(`/contest/${contest._id}`);
+      setRoom((prev) => (prev?.id === contest._id ? { ...prev, loading: false, problems: data?.problems || [] } : prev));
+    } catch {
+      setRoom((prev) => (prev?.id === contest._id ? { ...prev, loading: false } : prev));
+      setNotice({ type: 'error', message: 'Could not load the contest problems.' });
+    }
+  };
 
+  const errorText = (error, fallback) => (typeof error?.response?.data === 'string' ? error.response.data : fallback);
+
+  const handleJoin = async (contest) => {
+    try {
+      setBusyId(contest._id);
+      await axiosClient.post(`/contest/join/${contest._id}`);
       setContests((prev) =>
-        prev.map((contest) =>
-          contest._id === contestId
-            ? {
-                ...contest,
-                joined: true,
-                participantCount: (contest.participantCount || 0) + (contest.joined ? 0 : 1),
-              }
-            : contest
-        )
+        prev.map((c) => (c._id === contest._id ? { ...c, joined: true, participantCount: (c.participantCount || 0) + (c.joined ? 0 : 1) } : c))
       );
-
-      setNotice({ type: "success", message: "Successfully joined the contest." });
+      openRoom(contest, { endsAt: contest.endTime });
     } catch (error) {
-      console.error("Unable to join contest", error);
-      setNotice({
-        type: "error",
-        message: error?.response?.data || "Unable to join this contest right now.",
-      });
+      setNotice({ type: 'error', message: errorText(error, 'Unable to join this contest right now.') });
     } finally {
-      setJoiningId("");
+      setBusyId('');
     }
   };
 
-  const handleVirtualStart = async (contestId) => {
+  const handleVirtual = async (contest) => {
+    const saved = readVirtual(contest._id);
+    if (saved) {
+      openRoom(contest, { virtual: true, endsAt: saved.virtualEndTime });
+      return;
+    }
     try {
-      setStartingVirtualId(contestId);
-      const { data } = await axiosClient.post(`/contest/virtual/${contestId}`);
-
+      setBusyId(contest._id);
+      const { data } = await axiosClient.post(`/contest/virtual/${contest._id}`);
       if (data?.virtualContest) {
-        localStorage.setItem(
-          `virtualContest:${contestId}`,
-          JSON.stringify(data.virtualContest)
-        );
+        localStorage.setItem(VIRTUAL_KEY(contest._id), JSON.stringify(data.virtualContest));
+        openRoom(contest, { virtual: true, endsAt: data.virtualContest.virtualEndTime });
       }
-
-      setNotice({ type: "success", message: "Virtual contest started. Redirecting to practice..." });
-
-      navigate("/Practice");
     } catch (error) {
-      console.error("Unable to start virtual contest", error);
-      setNotice({
-        type: "error",
-        message: error?.response?.data || "Unable to start virtual contest right now.",
-      });
+      setNotice({ type: 'error', message: errorText(error, 'Unable to start a virtual contest right now.') });
     } finally {
-      setStartingVirtualId("");
+      setBusyId('');
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen px-6 pb-20 pt-16 text-white lg:px-8">
-        <div className="mx-auto max-w-7xl animate-pulse">
-          <div className="mb-8 h-8 w-70 rounded-xl bg-white/10"></div>
-          <div className="mb-10 h-5 w-120 max-w-full rounded-xl bg-white/5"></div>
-          <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {[...Array(4)].map((_, idx) => (
-              <div key={idx} className="h-26 rounded-2xl border border-white/10 bg-white/5"></div>
-            ))}
-          </div>
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {[...Array(6)].map((_, idx) => (
-              <div key={idx} className="h-72 rounded-3xl border border-white/10 bg-white/5"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const actionFor = (c) => {
+    const busy = busyId === c._id;
+    if (c.status === 'live') {
+      return c.joined
+        ? { label: 'Enter', cls: 'btn-primary', onClick: () => openRoom(c, { endsAt: c.endTime }) }
+        : { label: busy ? 'Joining…' : 'Join', cls: 'btn-primary', onClick: () => handleJoin(c), disabled: busy };
+    }
+    if (c.status === 'upcoming') return { label: 'Opens at start', cls: 'btn-secondary', disabled: true };
+    if (c.canStartVirtual) {
+      const resumable = !!readVirtual(c._id);
+      return { label: busy ? 'Starting…' : resumable ? 'Resume virtual' : 'Virtual run', cls: 'btn-secondary', onClick: () => handleVirtual(c), disabled: busy };
+    }
+    return { label: 'View problems', cls: 'btn-secondary', onClick: () => openRoom(c, { endsAt: c.endTime }) };
+  };
+
+  if (loading) return <PageLoader label="Loading contests…" />;
+
+  const featuredTarget = featured ? new Date(featured.status === 'live' ? featured.endTime : featured.startTime).getTime() : 0;
+  const featuredAction = featured ? actionFor(featured) : null;
+  const liveCount = contests.filter((c) => c.status === 'live').length;
+  const countdownLabels = ['Days', 'Hrs', 'Min', 'Sec'];
 
   return (
-    <div className="relative min-h-screen overflow-hidden px-6 pb-20 pt-16 text-white lg:px-8">
-      <div className="pointer-events-none absolute left-1/2 top-0 h-125 w-125 -translate-x-1/2 rounded-full bg-cyan-500/10 blur-[140px]"></div>
+    <div className="page fade-in">
+      <h1 className="page-title">Contests</h1>
+      <p className="page-sub">Timed rounds with a shared clock. Missed one? Run it virtually any time after it ends.</p>
 
-      <div className="relative z-10 mx-auto w-full max-w-7xl">
-        <div className="mb-10">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.24em] text-cyan-300">Contest Arena</p>
-          <h1 className="mb-4 text-4xl font-black md:text-5xl">Compete. Learn. Climb.</h1>
-          <p className="max-w-2xl text-slate-400">
-            Join timed contests, solve curated problems, and improve your ranking with every challenge.
-          </p>
+      {notice && (
+        <div className="mt-6">
+          <Notice type={notice.type} onClose={() => setNotice(null)}>
+            {notice.message}
+          </Notice>
         </div>
+      )}
 
-        {notice && (
-          <div
-            className={`mb-6 flex items-center justify-between rounded-2xl border px-4 py-3 text-sm ${
-              notice.type === "success"
-                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-                : "border-rose-500/40 bg-rose-500/10 text-rose-200"
-            }`}
-          >
-            <span>{notice.message}</span>
-            <button onClick={() => setNotice(null)} className="ml-3 rounded-lg p-1 hover:bg-black/20">
-              <X size={14} />
-            </button>
+      {featured ? (
+        <section
+          className="panel mt-6 grid items-center gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_auto_auto]"
+          style={{ background: 'radial-gradient(600px 220px at 85% 0%, color-mix(in srgb, var(--color-accent-900) 70%, transparent), transparent 70%), color-mix(in srgb, var(--color-surface) 70%, transparent)' }}
+        >
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-neutral-400">
+              <span className="tag tag-accent">{featured.status === 'live' ? 'Live now' : 'Next contest'}</span>
+              <span className="flex items-center gap-1.5"><Calendar size={13} />{formatWhen(featured.startTime)}</span>
+            </div>
+            <div className="mt-2.5 truncate text-[24px] font-medium tracking-[-0.01em]">{featured.title}</div>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-neutral-300">
+              <span className="flex items-center gap-1.5"><Clock size={14} />{formatDuration(durationMinutes(featured))}</span>
+              <span className="flex items-center gap-1.5"><Puzzle size={14} />{featured.problemCount || 0} problems</span>
+              <span className="flex items-center gap-1.5"><Users size={14} />{formatNumber(featured.participantCount)} joined</span>
+            </div>
           </div>
-        )}
-
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
-            <p className="text-xs uppercase tracking-wider text-emerald-300">Live Now</p>
-            <p className="mt-2 text-3xl font-black">{summary.live}</p>
+          <div className="tnum flex gap-5" aria-label={featured.status === 'live' ? 'Time left' : 'Starts in'}>
+            {splitCountdown(featuredTarget - now).map((c, i) => (
+              <div key={c.l} className="text-center">
+                <div className="text-[30px] font-medium leading-none">{c.v}</div>
+                <div className="mt-1.5 text-[10.5px] uppercase tracking-[0.08em] text-neutral-500">{countdownLabels[i]}</div>
+              </div>
+            ))}
           </div>
-          <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-4">
-            <p className="text-xs uppercase tracking-wider text-cyan-300">Upcoming</p>
-            <p className="mt-2 text-3xl font-black">{summary.upcoming}</p>
-          </div>
-          <div className="rounded-2xl border border-purple-400/20 bg-purple-500/10 p-4">
-            <p className="text-xs uppercase tracking-wider text-purple-300">Virtual Ready</p>
-            <p className="mt-2 text-3xl font-black">{summary.virtualReady}</p>
-          </div>
-          <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-            <p className="text-xs uppercase tracking-wider text-amber-300">Joined</p>
-            <p className="mt-2 text-3xl font-black">{summary.joined}</p>
-          </div>
+          <button type="button" className={`btn ${featuredAction.cls} btn-lg`} onClick={featuredAction.onClick} disabled={featuredAction.disabled}>
+            {featuredAction.label}
+          </button>
+        </section>
+      ) : (
+        <div className="panel-quiet mt-6 px-6 py-10 text-center">
+          <div className="text-[15px] font-medium">No contest scheduled yet</div>
+          <div className="mt-1 text-[13px] text-neutral-400">Past contests are still open for virtual runs below.</div>
         </div>
+      )}
 
-        <div className="mb-8 rounded-2xl border border-white/10 bg-slate-900/50 p-4">
-          <div className="mb-4 flex flex-wrap gap-2">
-            {filters.map((item) => (
-              <button
-                key={item}
-                onClick={() => setActiveFilter(item)}
-                className={`rounded-full border px-4 py-2 text-xs font-bold uppercase tracking-widest transition ${
-                  activeFilter === item
-                    ? "border-cyan-400/70 bg-cyan-500/15 text-cyan-200"
-                    : "border-white/10 bg-slate-900/70 text-slate-300 hover:border-cyan-500/40"
-                }`}
-              >
-                {item} <span className="ml-2 rounded-full bg-black/30 px-2 py-0.5">{filterCounts[item]}</span>
+      <section className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <div className="min-w-0">
+          <div className="flex gap-5" role="tablist" style={{ boxShadow: 'inset 0 -1px 0 var(--color-neutral-900)' }}>
+            {TABS.map((t) => (
+              <button key={t} type="button" role="tab" aria-selected={tab === t} className="tab flex items-center gap-1.5" onClick={() => setTab(t)}>
+                {t}
+                {t === 'Live' && liveCount > 0 && <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--color-err)' }} />}
               </button>
             ))}
           </div>
-
-          <div className="flex flex-col gap-3 md:flex-row">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by contest title or description"
-                className="w-full rounded-xl border border-white/10 bg-black/30 py-2.5 pl-9 pr-3 text-sm text-white outline-none transition focus:border-cyan-400/60"
-              />
-            </div>
-
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-slate-200 outline-none transition focus:border-cyan-400/60"
-            >
-              <option value="soonest">Sort: Start Time (Soonest)</option>
-              <option value="latest">Sort: Start Time (Latest)</option>
-              <option value="participants">Sort: Participants</option>
-              <option value="problems">Sort: Problem Count</option>
-            </select>
-          </div>
+          {rows.map((c) => {
+            const action = actionFor(c);
+            return (
+              <div key={c._id} className="row-rule grid items-center gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:gap-5">
+                <div className="min-w-0">
+                  <div className="truncate text-[15px] font-medium">{c.title}</div>
+                  <div className="mt-0.5 text-[13px] text-neutral-400">
+                    {c.problemCount || 0} problems · {durationMinutes(c)} min · {formatNumber(c.participantCount)} joined
+                    {c.joined && c.status === 'ended' ? ' · you took part' : ''}
+                  </div>
+                </div>
+                <div className="tnum text-[13px] text-neutral-300">
+                  {c.status === 'live' ? `Ends in ${shortCountdown(new Date(c.endTime) - now)}` : formatWhen(c.startTime)}
+                </div>
+                <button type="button" className={`btn ${action.cls} sm:justify-self-end`} onClick={action.onClick} disabled={action.disabled}>
+                  {action.label}
+                </button>
+              </div>
+            );
+          })}
+          {rows.length === 0 && <p className="py-10 text-sm text-neutral-400">No {tab.toLowerCase()} contests.</p>}
         </div>
 
-        {visibleContests.length === 0 ? (
-          <div className="glass-panel rounded-3xl p-10 text-center">
-            <h3 className="text-2xl font-black">No contests in this category</h3>
-            <p className="mt-2 text-sm text-slate-400">Check another filter or come back soon for upcoming events.</p>
+        <aside>
+          <div className="eyebrow text-xs">Your contests</div>
+          <div className="mt-3 flex items-baseline gap-2.5">
+            <span className="tnum text-[36px] font-medium leading-none">{record.joined}</span>
+            <span className="text-sm text-neutral-400">joined</span>
           </div>
-        ) : (
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {visibleContests.map((contest) => {
-              const targetTime = contest.status === 'upcoming' ? new Date(contest.startTime).getTime() : contest.status === 'live' ? new Date(contest.endTime).getTime() : null;
-              const diff = targetTime ? targetTime - now : null;
-              const seats = Math.max(0, contest.maxParticipants || 0);
-              const participants = Math.max(0, contest.participantCount || 0);
-              const seatPercent = seats > 0 ? Math.min(100, Math.round((participants / seats) * 100)) : 0;
-
-              return (
-              <div key={contest._id} className="glass-panel group relative rounded-3xl p-6 transition duration-300 hover:-translate-y-1 hover:border-cyan-500/30">
-                {targetTime && diff !== null && diff > 0 && (
-                  <div className="absolute right-4 top-4 flex items-center gap-2 rounded-full bg-black/40 border border-white/10 px-3 py-1 text-xs font-bold text-white">
-                    <Timer size={14} />
-                    <span>{contest.status === "upcoming" ? "Starts in" : "Ends in"} {formatRemaining(diff)}</span>
-                  </div>
-                )}
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <span
-                    className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
-                      statusStyle[contest.status]
-                    }`}
-                  >
-                    {contest.status}
-                  </span>
-                  <div className="flex items-center gap-1 text-xs text-slate-400">
-                    <Flag size={14} />
-                    {contest.problemCount} Problems
-                  </div>
-                </div>
-
-                <h3 className="mb-2 text-xl font-black group-hover:text-cyan-300 transition">{contest.title}</h3>
-                <p className="mb-5 text-sm leading-relaxed text-slate-400">{contest.description}</p>
-
-                <div className="space-y-2 rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm">
-                  <p className="flex items-center gap-2 text-slate-300">
-                    <CalendarDays size={15} className="text-cyan-300" />
-                    Starts: {formatDate(contest.startTime)}
-                  </p>
-                  <p className="flex items-center gap-2 text-slate-300">
-                    <Timer size={15} className="text-purple-300" />
-                    Ends: {formatDate(contest.endTime)}
-                  </p>
-                  {contest.participantCount > 0 && contest.maxParticipants > 0 && (
-                    <>
-                      <p className="flex items-center gap-2 text-slate-300">
-                        <Users size={15} className="text-emerald-300" />
-                        {contest.participantCount}/{contest.maxParticipants} participants
-                      </p>
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                        <div
-                          className="h-full rounded-full bg-emerald-400 transition-all duration-500"
-                          style={{ width: `${seatPercent}%` }}
-                        ></div>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <button
-                  disabled={contest.joined || contest.status !== "live" || joiningId === contest._id}
-                  onClick={() => handleJoin(contest._id)}
-                  className={`mt-5 w-full rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest transition ${
-                    contest.joined
-                      ? "cursor-not-allowed border border-emerald-400/30 bg-emerald-500/10 text-emerald-300"
-                      : contest.status !== "live"
-                      ? "cursor-not-allowed border border-white/10 bg-white/5 text-slate-500"
-                      : "bg-cyan-500 text-black hover:bg-cyan-400"
-                  }`}
-                >
-                  {contest.joined ? "Joined" : joiningId === contest._id ? "Joining..." : "Join Contest"}
-                </button>
-
-                {contest.canStartVirtual && (
-                  <button
-                    disabled={startingVirtualId === contest._id}
-                    onClick={() => handleVirtualStart(contest._id)}
-                    className="mt-3 w-full rounded-xl border border-purple-400/30 bg-purple-500/10 px-4 py-3 text-xs font-black uppercase tracking-widest text-purple-200 transition hover:bg-purple-500/20 disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {startingVirtualId === contest._id ? "Starting..." : "Start Virtual Contest"}
-                  </button>
-                )}
-
-                <button
-                  onClick={() => navigate("/Practice")}
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-slate-300 transition hover:border-cyan-400/30 hover:text-cyan-200"
-                >
-                  <Sparkles size={14} /> Practice Problems
-                </button>
-
-                {contest.joined && (
-                  <div className="mt-3 flex items-center gap-2 text-xs text-emerald-300">
-                    <Trophy size={14} /> You are participating in this contest.
-                  </div>
-                )}
-              </div>
-              );
-            })}
+          <div className="mt-5 flex flex-col gap-2.5 text-[13px]">
+            <div className="flex">
+              <span className="text-neutral-400">Upcoming</span>
+              <span className="flex-1" />
+              <span className="tnum">{record.upcoming}</span>
+            </div>
+            <div className="flex">
+              <span className="text-neutral-400">Open for a virtual run</span>
+              <span className="flex-1" />
+              <span className="tnum">{record.virtual}</span>
+            </div>
           </div>
-        )}
-      </div>
+        </aside>
+      </section>
+
+      {room && <ContestRoom room={room} now={now} onClose={() => setRoom(null)} />}
     </div>
   );
 };

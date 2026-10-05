@@ -2,6 +2,15 @@ import { GoogleGenAI } from "@google/genai";
 const solveDoubt=async(req,res)=>{
     try{
     const {messages,title,description,testCases,startCode}=req.body;
+    // Arrays/objects must be serialized, otherwise they show up as "[object Object]" in the prompt
+    const toPromptText=(value)=>typeof value==="string"?value:JSON.stringify(value ?? "",null,2);
+    // Gemini expects the conversation to start with a user turn; drop the UI's greeting
+    const contents=(Array.isArray(messages)?messages:[]);
+    const firstUserIdx=contents.findIndex((m)=>m?.role==="user");
+    const conversation=firstUserIdx===-1?[]:contents.slice(firstUserIdx);
+    if(conversation.length===0){
+        return res.status(400).json({message:"No question provided"});
+    }
     const ai=new GoogleGenAI({apiKey:process.env.GEMINI_KEY});
     async function main(){
         const response=await ai.models.generateContent({
@@ -9,7 +18,7 @@ const solveDoubt=async(req,res)=>{
             // model: "gemini-1.5-pro",
             model:"gemini-3-flash-preview",
 
-            contents:messages,
+            contents:conversation,
 
             config:{
                 systemInstruction:`You are an expert Data Structures and Algorithms (DSA) tutor specializing in helping users solve coding problems. Your role is strictly limited to DSA-related assistance only.
@@ -17,8 +26,8 @@ const solveDoubt=async(req,res)=>{
 ## CURRENT PROBLEM CONTEXT:
 [PROBLEM_TITLE]: ${title}
 [PROBLEM_DESCRIPTION]: ${description}
-[EXAMPLES]: ${testCases}
-[startCode]: ${startCode}
+[EXAMPLES]: ${toPromptText(testCases)}
+[startCode]: ${toPromptText(startCode)}
 
 
 ## YOUR CAPABILITIES:
@@ -87,10 +96,11 @@ Remember: Your goal is to help users learn and understand DSA concepts through t
     
     }
 
-    main();
+    await main();
       
     }
     catch(err){
+        console.error("AI chat error:", err?.message || err);
         res.status(500).json({
             message: "Internal server error"
         });

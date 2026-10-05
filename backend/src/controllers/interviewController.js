@@ -121,10 +121,16 @@ const getPublicInterviewPacks = async (req, res) => {
       purchasedPackIds = new Set(purchases.map(p => p.packId));
     }
 
-    const packsWithPurchaseInfo = packs.map((pack) => ({
-      ...pack,
-      isPurchased: purchasedPackIds.has(pack.packId),
-    }));
+    const packsWithPurchaseInfo = packs.map((pack) => {
+      const isPurchased = purchasedPackIds.has(pack.packId);
+      const isLocked = pack.isPremium && !isPurchased;
+      return {
+        ...pack,
+        // Don't reveal a premium pack's problem list until it's bought
+        problems: isLocked ? [] : pack.problems,
+        isPurchased,
+      };
+    });
 
     return res.status(200).json(packsWithPurchaseInfo);
   } catch (error) {

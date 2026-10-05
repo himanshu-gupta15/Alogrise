@@ -109,9 +109,12 @@ const userSchema = new Schema({
 // Middleware to clean up submissions when a user is deleted
 userSchema.post('findOneAndDelete', async function (userInfo) {
     if (userInfo) {
-        await mongoose.model('subission').deleteMany({ userId: userInfo._id });
+        await mongoose.model('submission').deleteMany({ userId: userInfo._id });
     }
 });
+
+// Speeds up rank recalculation and the leaderboard, which both sort by XP
+userSchema.index({ xp: -1 });
 
 const User = mongoose.model("user", userSchema);
 

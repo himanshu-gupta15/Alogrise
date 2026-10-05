@@ -1,304 +1,339 @@
-import React, { useEffect, useState, useMemo } from "react";
-import { Plus, Save, Trash2, Edit3, ShieldCheck, Search } from "lucide-react";
-import axiosClient from "../utils/axiosClient";
+import { useEffect, useMemo, useState } from 'react';
+import { Check, Pencil, Search, Trash2 } from 'lucide-react';
+import axiosClient from '../utils/axiosClient';
+import { Notice, PageLoader } from './ui';
+import { ConfirmDialog } from './AdminProblemList';
+import { capitalize, difficultyColor, formatNumber } from '../utils/format';
 
-const defaultForm = {
-  packId: "",
-  company: "",
-  role: "",
-  type: "online",
+const TYPES = [
+  { value: 'online', label: 'Online assessment' },
+  { value: 'phone', label: 'Phone screen' },
+  { value: 'onsite', label: 'Onsite' },
+];
+
+const EMPTY = {
+  packId: '',
+  company: '',
+  role: '',
+  type: 'online',
   problems: [],
   attempted: 0,
   successRate: 0,
   isPremium: false,
-  priceInCents: 0,
-  currency: "usd",
+  price: '',
+  currency: 'usd',
   isActive: true,
-  description: "",
+  description: '',
+};
+
+const priceLabel = (cents, currency = 'usd') => {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.toUpperCase() }).format((cents || 0) / 100);
+  } catch {
+    return `${((cents || 0) / 100).toFixed(2)} ${currency}`;
+  }
 };
 
 function AdminInterview() {
   const [packs, setPacks] = useState([]);
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingProblems, setLoadingProblems] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [editingId, setEditingId] = useState("");
-  const [form, setForm] = useState(defaultForm);
-  const [problemQuery, setProblemQuery] = useState("");
+  const [editingId, setEditingId] = useState('');
+  const [form, setForm] = useState(EMPTY);
+  const [query, setQuery] = useState('');
+  const [notice, setNotice] = useState(null);
+  const [toDelete, setToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const loadPacks = async () => {
-    try {
-      const { data } = await axiosClient.get("/interview/admin/packs");
-      setPacks(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Failed to load interview packs", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadProblems = async () => {
-    try {
-      const { data } = await axiosClient.get("/problem/getAllProblem");
-      setProblems(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Failed to load problems", error);
-    } finally {
-      setLoadingProblems(false);
-    }
-  };
+  const loadPacks = () =>
+    axiosClient
+      .get('/interview/admin/packs')
+      .then(({ data }) => setPacks(Array.isArray(data) ? data : []))
+      .catch(() => setNotice({ type: 'error', message: 'Could not load interview packs.' }));
 
   useEffect(() => {
-    loadPacks();
-    loadProblems();
+    Promise.all([
+      loadPacks(),
+      axiosClient
+        .get('/problem/getAllProblem')
+        .then(({ data }) => setProblems(Array.isArray(data) ? data : []))
+        .catch(() => setNotice({ type: 'error', message: 'Could not load problems.' })),
+    ]).finally(() => setLoading(false));
   }, []);
 
-  const filteredProblems = useMemo(() => {
-    const needle = problemQuery.trim().toLowerCase();
-    if (!needle) return problems;
-    return problems.filter((problem) =>
-      problem.title.toLowerCase().includes(needle) ||
-      (problem.difficulty && problem.difficulty.toLowerCase().includes(needle))
-    );
-  }, [problems, problemQuery]);
+  const visibleProblems = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return problems;
+    return problems.filter((p) => `${p.title} ${p.difficulty}`.toLowerCase().includes(q));
+  }, [problems, query]);
+
+  const titleOf = useMemo(() => new Map(problems.map((p) => [p._id, p.title])), [problems]);
+
+  const set = (key) => (e) => {
+    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    setForm((f) => ({ ...f, [key]: value }));
+  };
+
+  const toggleProblem = (id) =>
+    setForm((f) => ({ ...f, problems: f.problems.includes(id) ? f.problems.filter((x) => x !== id) : [...f.problems, id] }));
 
   const resetForm = () => {
-    setForm(defaultForm);
-    setEditingId("");
-    setProblemQuery("");
+    setForm(EMPTY);
+    setEditingId('');
+    setQuery('');
+  };
+
+  const startEdit = (pack) => {
+    setEditingId(pack._id);
+    setForm({
+      packId: pack.packId || '',
+      company: pack.company || '',
+      role: pack.role || '',
+      type: pack.type || 'online',
+      problems: (pack.problems || []).map(String),
+      attempted: pack.attempted || 0,
+      successRate: pack.successRate || 0,
+      isPremium: Boolean(pack.isPremium),
+      price: pack.priceInCents ? (pack.priceInCents / 100).toFixed(2) : '',
+      currency: pack.currency || 'usd',
+      isActive: pack.isActive !== false,
+      description: pack.description || '',
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (form.problems.length === 0) {
-      alert("Please select at least one problem for the interview pack.");
+      setNotice({ type: 'error', message: 'Pick at least one problem for the pack.' });
       return;
     }
+    const priceInCents = form.isPremium ? Math.round(Number(form.price || 0) * 100) : 0;
+    if (form.isPremium && priceInCents <= 0) {
+      setNotice({ type: 'error', message: 'Premium packs need a price above zero.' });
+      return;
+    }
+    const payload = {
+      ...form,
+      price: undefined,
+      sets: form.problems.length,
+      attempted: Number(form.attempted) || 0,
+      successRate: Number(form.successRate) || 0,
+      priceInCents,
+    };
     try {
       setSaving(true);
-      const payload = {
-        ...form,
-        sets: form.problems.length,
-        attempted: Number(form.attempted) || 0,
-        successRate: Number(form.successRate) || 0,
-        priceInCents: form.isPremium ? Number(form.priceInCents) || 0 : 0,
-      };
-
-      if (editingId) {
-        await axiosClient.put(`/interview/admin/packs/${editingId}`, payload);
-      } else {
-        await axiosClient.post("/interview/admin/packs", payload);
-      }
-
+      if (editingId) await axiosClient.put(`/interview/admin/packs/${editingId}`, payload);
+      else await axiosClient.post('/interview/admin/packs', payload);
       await loadPacks();
+      setNotice({ type: 'success', message: editingId ? `Saved “${form.company} · ${form.role}”.` : `Created “${form.company} · ${form.role}”.` });
       resetForm();
     } catch (error) {
-      console.error("Failed to save interview pack", error);
-      alert(error?.response?.data?.error || "Failed to save interview pack");
+      setNotice({ type: 'error', message: error?.response?.data?.error || 'Could not save the pack.' });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleEdit = (pack) => {
-    setEditingId(pack._id);
-    setForm({
-      packId: pack.packId || "",
-      company: pack.company || "",
-      role: pack.role || "",
-      type: pack.type || "online",
-      problems: pack.problems || [],
-      attempted: pack.attempted || 0,
-      successRate: pack.successRate || 0,
-      isPremium: Boolean(pack.isPremium),
-      priceInCents: pack.priceInCents || 0,
-      currency: pack.currency || "usd",
-      isActive: Boolean(pack.isActive),
-      description: pack.description || "",
-    });
-  };
-
-  const handleDelete = async (id) => {
-    const ok = window.confirm("Delete this interview pack?");
-    if (!ok) return;
-
+  const confirmDelete = async () => {
     try {
-      await axiosClient.delete(`/interview/admin/packs/${id}`);
+      setDeleting(true);
+      await axiosClient.delete(`/interview/admin/packs/${toDelete._id}`);
       await loadPacks();
-      if (editingId === id) resetForm();
+      if (editingId === toDelete._id) resetForm();
+      setNotice({ type: 'success', message: `Deleted “${toDelete.company} · ${toDelete.role}”.` });
     } catch (error) {
-      console.error("Failed to delete interview pack", error);
-      alert(error?.response?.data?.error || "Failed to delete interview pack");
+      setNotice({ type: 'error', message: error?.response?.data?.error || 'Could not delete the pack.' });
+    } finally {
+      setDeleting(false);
+      setToDelete(null);
     }
   };
 
+  if (loading) return <PageLoader label="Loading interview packs…" />;
+
   return (
-    <div className="min-h-screen bg-[#06080c] px-6 py-16 text-white">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-10 border-l-4 border-cyan-500 pl-5">
-          <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.35em] text-cyan-300">
-            <ShieldCheck size={14} /> Admin / Interview Control
-          </p>
-          <h1 className="text-4xl font-black uppercase tracking-tight">Interview Mock Assessment Control</h1>
-          <p className="mt-2 text-sm text-slate-400">Create and manage free/premium interview packs shown on the user Interview page.</p>
+    <div className="page fade-in">
+      <h1 className="page-title">Interview packs</h1>
+      <p className="page-sub">Free and premium mock assessments shown on the Interview page.</p>
+
+      {notice && (
+        <div className="mt-6">
+          <Notice type={notice.type} onClose={() => setNotice(null)}>
+            {notice.message}
+          </Notice>
         </div>
+      )}
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr]">
-          <form onSubmit={handleSubmit} className="rounded-3xl border border-white/10 bg-slate-900/40 p-6">
-            <h2 className="mb-5 text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
-              {editingId ? "Edit Pack" : "Create Pack"}
-            </h2>
-
-            <div className="space-y-4">
-              <input value={form.packId} onChange={(e) => setForm((p) => ({ ...p, packId: e.target.value }))} placeholder="packId (e.g. amazon-oa)" className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none focus:border-cyan-500" />
-              <input value={form.company} onChange={(e) => setForm((p) => ({ ...p, company: e.target.value }))} placeholder="Company" className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none focus:border-cyan-500" />
-              <input value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))} placeholder="Role / Round" className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none focus:border-cyan-500" />
-
-              <div className="w-full">
-                <select value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none focus:border-cyan-500">
-                  <option value="online">Online</option>
-                  <option value="phone">Phone</option>
-                  <option value="onsite">Onsite</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <input type="number" min="0" value={form.attempted} onChange={(e) => setForm((p) => ({ ...p, attempted: e.target.value }))} placeholder="Attempted" className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none focus:border-cyan-500" />
-                <input type="number" min="0" max="100" step="0.01" value={form.successRate} onChange={(e) => setForm((p) => ({ ...p, successRate: e.target.value }))} placeholder="Success Rate %" className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none focus:border-cyan-500" />
-              </div>
-
-              <textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} placeholder="Description" rows={3} className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none focus:border-cyan-500" />
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Select Problems</label>
-                <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-3 py-2">
-                  <Search size={14} className="text-slate-500" />
-                  <input
-                    type="text"
-                    placeholder="Search problems..."
-                    value={problemQuery}
-                    onChange={(e) => setProblemQuery(e.target.value)}
-                    className="w-full bg-transparent text-sm outline-none placeholder:text-slate-600 focus:ring-0"
-                  />
-                </div>
-                <div className="max-h-40 overflow-y-auto space-y-1 rounded-xl border border-white/10 bg-black/20 p-2">
-                  {loadingProblems ? (
-                    <p className="text-xs text-slate-500 p-1">Loading problems...</p>
-                  ) : filteredProblems.length === 0 ? (
-                    <p className="text-xs text-slate-500 p-1">No problems found</p>
-                  ) : (
-                    filteredProblems.map((problem) => {
-                      const isSelected = form.problems.includes(problem._id);
-                      return (
-                        <button
-                          key={problem._id}
-                          type="button"
-                          onClick={() => {
-                            setForm((p) => {
-                              const newProblems = p.problems.includes(problem._id)
-                                ? p.problems.filter((id) => id !== problem._id)
-                                : [...p.problems, problem._id];
-                              return { ...p, problems: newProblems };
-                            });
-                          }}
-                          className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition ${
-                            isSelected
-                              ? "bg-cyan-500/10 text-cyan-300 border border-cyan-500/20"
-                              : "hover:bg-white/5 border border-transparent text-slate-300"
-                          }`}
-                        >
-                          <span>{problem.title}</span>
-                          <span className="text-[9px] uppercase tracking-widest text-slate-500">
-                            {problem.difficulty}
-                          </span>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-400">
-                  Selected: <span className="font-bold text-cyan-300">{form.problems.length}</span> problem(s)
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <label className="flex items-center gap-2 text-sm text-slate-300">
-                  <input type="checkbox" checked={form.isPremium} onChange={(e) => setForm((p) => ({ ...p, isPremium: e.target.checked }))} /> Premium
-                </label>
-                <label className="flex items-center gap-2 text-sm text-slate-300">
-                  <input type="checkbox" checked={form.isActive} onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))} /> Active
-                </label>
-              </div>
-
-              {form.isPremium && (
-                <div className="grid grid-cols-2 gap-3">
-                  <input type="number" min="0" value={form.priceInCents} onChange={(e) => setForm((p) => ({ ...p, priceInCents: e.target.value }))} placeholder="Price (in cents)" className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none focus:border-cyan-500" />
-                  <input value={form.currency} onChange={(e) => setForm((p) => ({ ...p, currency: e.target.value }))} placeholder="Currency (usd)" className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 outline-none focus:border-cyan-500" />
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 text-sm font-black uppercase tracking-widest text-black transition hover:bg-cyan-400 disabled:opacity-60">
-                  {editingId ? <Save size={15} /> : <Plus size={15} />} {saving ? "Saving..." : editingId ? "Update" : "Create"}
-                </button>
-                {editingId && (
-                  <button type="button" onClick={resetForm} className="rounded-xl border border-white/15 px-5 py-3 text-sm font-black uppercase tracking-widest text-slate-300 transition hover:border-cyan-400/40">
-                    Cancel Edit
-                  </button>
-                )}
-              </div>
+      <div className="mt-10 grid gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <div className="flex items-center">
+            <span className="eyebrow eyebrow-accent">{editingId ? 'Edit pack' : 'New pack'}</span>
+            <span className="flex-1" />
+            {editingId && (
+              <button type="button" className="btn btn-ghost" onClick={resetForm}>
+                Cancel edit
+              </button>
+            )}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="field">
+              <label htmlFor="i-company">Company</label>
+              <input id="i-company" className="input" required value={form.company} onChange={set('company')} placeholder="Amazon" />
             </div>
-          </form>
-
-          <div className="rounded-3xl border border-white/10 bg-slate-900/40 p-6">
-            <h2 className="mb-5 text-sm font-black uppercase tracking-[0.2em] text-purple-300">Existing Packs</h2>
-            {loading ? (
-              <p className="text-slate-400">Loading packs...</p>
-            ) : packs.length === 0 ? (
-              <p className="text-slate-400">No interview packs found.</p>
-            ) : (
-              <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
-                {packs.map((pack) => (
-                  <div key={pack._id} className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-black">{pack.company} • {pack.role}</h3>
-                        <p className="text-xs uppercase tracking-widest text-slate-500">{pack.packId} • {pack.type}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-widest ${pack.isPremium ? "bg-amber-500/15 text-amber-200" : "bg-emerald-500/15 text-emerald-200"}`}>
-                          {pack.isPremium ? "Premium" : "Free"}
-                        </span>
-                        <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-widest ${pack.isActive ? "bg-cyan-500/15 text-cyan-200" : "bg-slate-500/20 text-slate-300"}`}>
-                          {pack.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <p className="mb-3 text-sm text-slate-400">{pack.description || "No description"}</p>
-                    <div className="mb-4 grid grid-cols-2 gap-2 text-xs text-slate-400">
-                      <p>Sets: <span className="text-slate-200">{pack.sets}</span></p>
-                      <p>Attempted: <span className="text-slate-200">{pack.attempted}</span></p>
-                      <p>Success: <span className="text-slate-200">{pack.successRate}%</span></p>
-                      <p>Price: <span className="text-slate-200">{pack.isPremium ? `${(pack.priceInCents / 100).toFixed(2)} ${pack.currency}` : "Free"}</span></p>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button onClick={() => handleEdit(pack)} className="inline-flex items-center gap-1 rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 text-xs font-black uppercase tracking-wider text-cyan-200">
-                        <Edit3 size={13} /> Edit
-                      </button>
-                      <button onClick={() => handleDelete(pack._id)} className="inline-flex items-center gap-1 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-xs font-black uppercase tracking-wider text-rose-200">
-                        <Trash2 size={13} /> Delete
-                      </button>
-                    </div>
-                  </div>
+            <div className="field">
+              <label htmlFor="i-role">Role / round</label>
+              <input id="i-role" className="input" required value={form.role} onChange={set('role')} placeholder="SDE II" />
+            </div>
+            <div className="field">
+              <label htmlFor="i-id">Pack ID</label>
+              <input id="i-id" className="input input-mono" required value={form.packId} onChange={set('packId')} placeholder="amazon-sde2-oa" />
+            </div>
+            <div className="field">
+              <label>Type</label>
+              <div className="seg" role="radiogroup">
+                {TYPES.map((t) => (
+                  <button key={t.value} type="button" role="radio" aria-checked={form.type === t.value} className="seg-opt" onClick={() => setForm((f) => ({ ...f, type: t.value }))}>
+                    {t.label.split(' ')[0]}
+                  </button>
                 ))}
               </div>
+            </div>
+          </div>
+          <div className="field">
+            <label htmlFor="i-desc">Description</label>
+            <textarea id="i-desc" className="input" rows={3} maxLength={600} value={form.description} onChange={set('description')} placeholder="What this round covers" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="field">
+              <label htmlFor="i-att">Attempts shown</label>
+              <input id="i-att" type="number" min={0} className="input" value={form.attempted} onChange={set('attempted')} />
+            </div>
+            <div className="field">
+              <label htmlFor="i-rate">Pass rate %</label>
+              <input id="i-rate" type="number" min={0} max={100} step="0.1" className="input" value={form.successRate} onChange={set('successRate')} />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-end gap-6">
+            <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+              <input type="checkbox" className="accent-accent" checked={form.isPremium} onChange={set('isPremium')} /> Premium
+            </label>
+            {form.isPremium && (
+              <div className="field">
+                <label htmlFor="i-price">Price</label>
+                <div className="flex gap-2">
+                  <input id="i-price" type="number" min={0} step="0.01" className="input w-32" value={form.price} onChange={set('price')} placeholder="19.00" />
+                  <select className="input w-24" value={form.currency} onChange={set('currency')} aria-label="Currency">
+                    {['usd', 'inr', 'eur', 'gbp'].map((c) => (
+                      <option key={c} value={c}>
+                        {c.toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             )}
+            <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+              <input type="checkbox" className="accent-accent" checked={form.isActive} onChange={set('isActive')} /> Visible to users
+            </label>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="eyebrow">Problems · {form.problems.length} selected</span>
+              <span className="flex-1" />
+              <div className="relative w-full sm:w-56">
+                <Search size={15} className="absolute left-2.5 top-2.75 text-neutral-500" />
+                <input className="input pl-8" placeholder="Search problems" value={query} onChange={(e) => setQuery(e.target.value)} />
+              </div>
+            </div>
+            <div className="mt-2 max-h-80 overflow-y-auto pr-1">
+              {visibleProblems.map((p) => {
+                const on = form.problems.includes(p._id);
+                return (
+                  <button key={p._id} type="button" onClick={() => toggleProblem(p._id)} aria-pressed={on} className="row-rule flex w-full items-center gap-3 py-2.5 text-left hover:bg-white/3">
+                    <span
+                      className="grid h-5 w-5 flex-none place-items-center rounded-sm"
+                      style={{ border: `1px solid ${on ? 'var(--color-accent)' : 'var(--color-divider)'}`, background: on ? 'var(--color-accent-800)' : 'transparent' }}
+                    >
+                      {on && <Check size={13} className="text-accent-100" />}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[15px]">{p.title}</span>
+                    <span className="text-sm" style={{ color: difficultyColor(p.difficulty) }}>
+                      {capitalize(p.difficulty)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <button type="submit" className="btn btn-primary btn-lg" disabled={saving}>
+              {saving ? 'Saving…' : editingId ? 'Save pack' : 'Create pack'}
+            </button>
+          </div>
+        </form>
+
+        {/* Existing packs */}
+        <div className="min-w-0">
+          <div className="eyebrow">
+            Packs · {packs.length}
+          </div>
+          {packs.length === 0 && <p className="py-6 text-sm text-neutral-400">No packs yet. Create the first one.</p>}
+          <div className="mt-2">
+            {packs.map((pack) => (
+              <div
+                key={pack._id}
+                className="row-rule flex items-center gap-4 py-4"
+                style={editingId === pack._id ? { backgroundColor: 'color-mix(in srgb, var(--color-accent-900) 60%, transparent)' } : undefined}
+              >
+                <span className="min-w-0 flex-1 pl-2">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-[16px]">
+                      {pack.company} · {pack.role}
+                    </span>
+                    <span className={`tag ${pack.isPremium ? 'tag-outline' : 'tag-neutral'}`}>
+                      {pack.isPremium ? priceLabel(pack.priceInCents, pack.currency) : 'Free'}
+                    </span>
+                    {pack.isActive === false && <span className="tag tag-neutral">Hidden</span>}
+                  </span>
+                  <span className="mt-1 block truncate text-[13px] text-neutral-400">
+                    {TYPES.find((t) => t.value === pack.type)?.label || pack.type} · {pack.problems?.length || 0} problems · {formatNumber(pack.attempted)} attempts ·{' '}
+                    <span className="font-mono">{pack.packId}</span>
+                  </span>
+                  {pack.problems?.length > 0 && (
+                    <span className="mt-0.5 block truncate text-[13px] text-neutral-500">
+                      {pack.problems.map((id) => titleOf.get(String(id)) || 'Removed problem').join(', ')}
+                    </span>
+                  )}
+                </span>
+                <button type="button" className="btn btn-icon btn-secondary" onClick={() => startEdit(pack)} aria-label="Edit pack">
+                  <Pencil size={15} />
+                </button>
+                <button type="button" className="btn btn-icon btn-danger" onClick={() => setToDelete(pack)} aria-label="Delete pack">
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       </div>
+
+      {toDelete && (
+        <ConfirmDialog
+          title="Delete this pack?"
+          body={<>“{toDelete.company} · {toDelete.role}” will disappear from the Interview page. People who bought it keep their purchase record.</>}
+          confirmLabel="Delete pack"
+          danger
+          busy={deleting}
+          onConfirm={confirmDelete}
+          onCancel={() => setToDelete(null)}
+        />
+      )}
     </div>
   );
 }

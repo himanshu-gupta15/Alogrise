@@ -1,104 +1,102 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { Trophy, Zap, Target, Medal, Crown } from 'lucide-react';
 import axiosClient from '../utils/axiosClient';
+import { Avatar, PageLoader } from './ui';
+import { formatNumber } from '../utils/format';
+
+const fullName = (u) => `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Anonymous';
+
+const neutralAvatar = { background: 'var(--color-neutral-800)', color: 'var(--color-neutral-100)' };
 
 const Leaderboard = () => {
   const { user: currentUser } = useSelector((state) => state.auth);
-  const [leaderboard, setLeaderboard] = useState([]);
+  const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchLeaderboard = async () => {
-      try {
-        const { data } = await axiosClient.get('/user/getleaderboard');
-        setLeaderboard(data);
-      } catch (err) {
-        console.error("Failed to fetch leaderboard:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLeaderboard();
+    axiosClient
+      .get('/user/getleaderboard')
+      .then(({ data }) => setRows(Array.isArray(data) ? data : []))
+      .catch(() => setError('Could not load the leaderboard.'))
+      .finally(() => setLoading(false));
   }, []);
 
-  const getRankStyle = (index) => {
-    switch (index) {
-      case 0: return { border: 'border-amber-500/50', bg: 'bg-amber-500/10', text: 'text-amber-500', icon: <Crown size={16} /> };
-      case 1: return { border: 'border-slate-300/50', bg: 'bg-slate-300/10', text: 'text-slate-300', icon: <Medal size={16} /> };
-      case 2: return { border: 'border-orange-500/50', bg: 'bg-orange-500/10', text: 'text-orange-500', icon: <Medal size={16} /> };
-      default: return { border: 'border-white/5', bg: 'bg-white/[0.02]', text: 'text-slate-500', icon: null };
-    }
-  };
+  if (loading) return <PageLoader label="Loading leaderboard…" />;
 
-  if (loading) return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-cyan-500/20 border-t-cyan-500"></div>
-    </div>
-  );
+  const ranked = rows.map((u, i) => ({ ...u, rank: i + 1, me: u._id === currentUser?._id }));
+  const podium = ranked.slice(0, 3);
+  const rest = ranked.slice(3);
 
   return (
-    <div className="relative min-h-screen overflow-hidden px-6 pb-20 pt-24 text-white">
-      {/* Visual background glows */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-200 h-100 bg-purple-600/10 blur-[120px] rounded-full pointer-events-none"></div>
+    <div className="page fade-in">
+      <h1 className="page-title">Leaderboard</h1>
+      <p className="page-sub">10 XP for every problem you solve.</p>
 
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-16 text-center">
-          <h1 className="mb-4 text-5xl font-black tracking-tight">Global Leaderboard</h1>
-          <p className="text-xs font-mono uppercase tracking-[0.24em] text-slate-500">Ranking based on solved consistency and XP</p>
+      {error && <p className="mt-8" style={{ color: 'var(--color-err)' }}>{error}</p>}
+      {!error && ranked.length === 0 && <p className="mt-8 text-neutral-400">No one has solved a problem yet. Be the first.</p>}
+
+      {podium.length > 0 && (
+        <div className="mt-6 grid gap-3 md:grid-cols-3">
+          {podium.map((p) => (
+            <Link
+              key={p._id}
+              to={`/profile/${p._id}`}
+              className="panel flex items-center gap-3 p-4 text-text hover:shadow-[inset_0_0_0_1px_var(--color-accent-700)]"
+              style={p.me ? { boxShadow: 'inset 0 0 0 1px var(--color-accent-700)' } : undefined}
+            >
+              <span className="tnum w-7 text-[14px] text-accent">#{p.rank}</span>
+              <Avatar user={p} size={36} style={neutralAvatar} />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-2">
+                  <span className="truncate text-[15px]">{fullName(p)}</span>
+                  {p.me && <span className="tag tag-accent">You</span>}
+                </span>
+                <span className="mt-0.5 block text-[12.5px] text-neutral-500">
+                  {p.problemSolvedCount || 0} solved · {p.streak || 0}d streak
+                </span>
+              </span>
+              <span className="tnum text-[17px] font-medium">{formatNumber(p.xp)}</span>
+            </Link>
+          ))}
         </div>
+      )}
 
-        <div className="space-y-4">
-          {leaderboard.map((player, index) => {
-            const isMe = player._id === currentUser?._id;
-            const style = getRankStyle(index);
-
-            return (
-              <div 
-                key={player._id}
-                className={`relative flex items-center justify-between p-6 rounded-3xl border transition-all hover:scale-[1.01] ${style.border} ${style.bg} ${isMe ? 'ring-2 ring-cyan-500/50' : ''}`}
-              >
-                <div className="flex items-center gap-6">
-                  {/* Rank Number */}
-                  <div className={`w-10 text-xl font-black ${style.text}`}>
-                    #{index + 1}
-                  </div>
-
-                  {/* Avatar */}
-                  <div className="w-12 h-12 rounded-full bg-black border border-white/10 flex items-center justify-center font-black text-sm text-white overflow-hidden">
-                    {player.firstName?.charAt(0)}
-                  </div>
-
-                  {/* Identity */}
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-black uppercase tracking-tight text-white">{player.firstName} {player.lastName}</p>
-                      {style.icon}
-                      {isMe && <span className="bg-cyan-500 text-black text-[8px] font-black px-2 py-0.5 rounded uppercase">You</span>}
-                    </div>
-                    <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Architect_{player._id.slice(-4)}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-10">
-                  <div className="text-right hidden sm:block">
-                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1 flex items-center justify-end gap-1">
-                      <Zap size={10} className="text-amber-500" /> Streak
-                    </p>
-                    <p className="text-sm font-black text-white">{player.streak || 0} Days</p>
-                  </div>
-                  <div className="text-right min-w-20">
-                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1 flex items-center justify-end gap-1">
-                      <Target size={10} className="text-cyan-500" /> Score
-                    </p>
-                    <p className="text-xl font-black text-cyan-400">{player.xp || 0}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+      {rest.length > 0 && (
+        <div className="mt-6 overflow-x-auto">
+          <table className="table">
+            <thead>
+              <tr>
+                <th style={{ width: 64 }}>Rank</th>
+                <th>Coder</th>
+                <th style={{ width: 110, textAlign: 'right' }}>Solved</th>
+                <th style={{ width: 110, textAlign: 'right' }}>Streak</th>
+                <th style={{ width: 110, textAlign: 'right' }}>XP</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rest.map((r) => (
+                <tr key={r._id} style={r.me ? { backgroundColor: 'color-mix(in srgb, var(--color-accent-900) 55%, transparent)' } : undefined}>
+                  <td className="tnum text-neutral-400" style={{ padding: '13px 8px' }}>{r.rank}</td>
+                  <td style={{ padding: '13px 8px' }}>
+                    <span className="flex items-center gap-3">
+                      <Avatar user={r} size={28} style={neutralAvatar} />
+                      <Link to={`/profile/${r._id}`} className="truncate text-text hover:text-accent">
+                        {fullName(r)}
+                      </Link>
+                      {r.me && <span className="tag tag-accent">You</span>}
+                    </span>
+                  </td>
+                  <td className="tnum text-right" style={{ padding: '13px 8px' }}>{r.problemSolvedCount || 0}</td>
+                  <td className="tnum text-right text-neutral-300" style={{ padding: '13px 8px' }}>{r.streak || 0}d</td>
+                  <td className="tnum text-right text-accent-300" style={{ padding: '13px 8px' }}>{formatNumber(r.xp)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
+      )}
     </div>
   );
 };

@@ -1,5 +1,62 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&family=JetBrains+Mono:wght@300;400;600&display=swap');
 @import "tailwindcss";
+
+/* ══════════════════════════════════════════════════════════════════════
+   Nocturne — Algorise design tokens.
+   Defined in @theme so Tailwind generates utilities for them
+   (bg-surface, text-accent, text-neutral-400, border-divider, …).
+   ══════════════════════════════════════════════════════════════════════ */
+@theme {
+  --color-bg: #161826;
+  --color-surface: #232532;
+  --color-text: #e9e9ed;
+  --color-accent: #9184d9;
+  --color-accent-2: #a7a1db;
+  --color-divider: color-mix(in srgb, #e9e9ed 16%, transparent);
+  --color-hairline: color-mix(in srgb, #e9e9ed 8%, transparent);
+
+  --color-neutral-100: #f3f5fe;
+  --color-neutral-200: #e4e7f5;
+  --color-neutral-300: #cfd3e5;
+  --color-neutral-400: #b2b6ca;
+  --color-neutral-500: #9397ab;
+  --color-neutral-600: #75798c;
+  --color-neutral-700: #595d6c;
+  --color-neutral-800: #3f424d;
+  --color-neutral-900: #292b31;
+
+  --color-accent-100: #f5f4ff;
+  --color-accent-200: #e7e5fe;
+  --color-accent-300: #d2cefd;
+  --color-accent-400: #b5abfc;
+  --color-accent-500: #968ae0;
+  --color-accent-600: #796cbf;
+  --color-accent-700: #5d5294;
+  --color-accent-800: #423a6a;
+  --color-accent-900: #2b2741;
+
+  --color-section: #262a60;
+  --color-section-glow: #353b80;
+
+  /* Status colors (v2): success / warning / error; difficulty uses the same three */
+  --color-ok: oklch(0.80 0.11 160);
+  --color-warn: oklch(0.83 0.11 80);
+  --color-err: oklch(0.74 0.13 22);
+  --color-easy: var(--color-ok);
+  --color-medium: var(--color-warn);
+  --color-hard: var(--color-err);
+  --color-chrome: color-mix(in srgb, black 16%, #161826);
+
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+
+  --shadow-hairline: 0 0 0 1px #3f424d;
+  --shadow-raised: 0 0 0 1px #595d6c, 0 6px 18px rgba(0, 0, 0, 0.55);
+  --shadow-float: 0 0 0 1px #9397ab, 0 16px 40px rgba(0, 0, 0, 0.65);
+}
 
 :root {
   color-scheme: dark;
@@ -13,62 +70,303 @@ body,
 
 body {
   margin: 0;
-  font-family: 'Montserrat', 'Inter', 'Segoe UI', Helvetica, Arial, sans-serif;
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
-  font-variant-numeric: tabular-nums;
-  background:
-    radial-gradient(circle at 15% 20%, rgba(34, 211, 238, 0.12), transparent 35%),
-    radial-gradient(circle at 85% 15%, rgba(168, 85, 247, 0.12), transparent 35%),
-    #020617;
-  color: #e2e8f0;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  background: color-mix(in srgb, var(--color-bg) 72%, black);
+  color: var(--color-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-* {
-  box-sizing: border-box;
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
 }
 
-*::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
+*, *::before, *::after { box-sizing: border-box; }
 
-*::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.8);
-}
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+::selection { background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
 
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(6, 182, 212, 0.65), rgba(168, 85, 247, 0.65));
+  background: var(--color-neutral-800);
   border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
+*::-webkit-scrollbar-thumb:hover { background-color: var(--color-neutral-700); }
 
-*::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(34, 211, 238, 0.85), rgba(192, 132, 252, 0.85));
-}
+/* ══════════════════════════════════════════════════════════════════════
+   Components — the design system's classes. In the components layer so
+   Tailwind utilities on the same element can still override them.
+   ══════════════════════════════════════════════════════════════════════ */
+@layer components {
+  /* Page ground: the soft blurple bloom top-right used on every screen */
+  .page-ground {
+    min-height: 100vh;
+    background:
+      radial-gradient(1200px 720px at 82% -160px, color-mix(in srgb, var(--color-accent-900) 75%, transparent), transparent 60%),
+      var(--color-bg);
+  }
+  .page-ground-deep {
+    min-height: 100vh;
+    background:
+      radial-gradient(1200px 720px at 82% -160px, color-mix(in srgb, var(--color-accent-900) 75%, transparent), transparent 60%),
+      radial-gradient(1100px 800px at -10% 100%, color-mix(in srgb, black 30%, transparent), transparent 55%),
+      var(--color-bg);
+  }
 
-@layer utilities {
+  /* Rules fade out at both ends — a Nocturne signature */
+  .rule {
+    height: 1px;
+    border: 0;
+    background: linear-gradient(to right, transparent, var(--color-divider) 48px, var(--color-divider) calc(100% - 48px), transparent);
+  }
+  .rule-bottom {
+    background-image: linear-gradient(to right, transparent, var(--color-divider) 48px, var(--color-divider) calc(100% - 48px), transparent);
+    background-repeat: no-repeat;
+    background-position: bottom;
+    background-size: 100% 1px;
+  }
+  .row-rule { box-shadow: inset 0 -1px 0 var(--color-hairline); }
+
+  .eyebrow {
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-neutral-400);
+  }
+  .eyebrow-accent { color: var(--color-accent); }
+
+  /* — buttons — */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    cursor: pointer; text-decoration: none; white-space: nowrap; flex: none;
+    font-family: var(--font-sans); font-weight: 500;
+    font-size: 14px; line-height: 1.2; color: var(--color-text);
+    background: transparent; border: 1px solid transparent;
+    padding: 5.6px 10px;
+    border-radius: var(--radius-md);
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+  }
+  .btn:disabled, .btn[aria-disabled='true'] { opacity: 0.45; cursor: not-allowed; }
+  .btn-primary { color: var(--color-accent); border-color: var(--color-accent); }
+  .btn-primary:not(:disabled):hover { background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
+  .btn-primary:not(:disabled):active { background: color-mix(in srgb, var(--color-accent) 22%, transparent); }
+  .btn-secondary { border-color: var(--color-divider); color: var(--color-text); }
+  .btn-secondary:not(:disabled):hover { background: color-mix(in srgb, var(--color-text) 7%, transparent); }
+  .btn-secondary:not(:disabled):active { background: color-mix(in srgb, var(--color-text) 14%, transparent); }
+  .btn-ghost { color: var(--color-accent); padding-inline: 4px; }
+  .btn-ghost:not(:disabled):hover { background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
+  .btn-danger { color: var(--color-hard); border-color: color-mix(in srgb, var(--color-hard) 60%, transparent); }
+  .btn-danger:not(:disabled):hover { background: color-mix(in srgb, var(--color-hard) 12%, transparent); }
+  .btn-icon { width: 36px; height: 36px; padding: 0; }
+  .btn-lg { padding: 10px 18px; }
+  .btn-block { width: 100%; }
+
+  /* — forms — */
+  .field > label {
+    display: flex; font-size: 12px; margin-bottom: 5px;
+    color: color-mix(in srgb, var(--color-text) 70%, transparent);
+  }
+  .input {
+    width: 100%; min-height: 36px; padding: 6px 10px; font: inherit;
+    font-size: 14px; color: var(--color-text); caret-color: var(--color-accent);
+    background: var(--color-surface);
+    border: 1px solid var(--color-divider); border-radius: var(--radius-md);
+  }
+  .input::placeholder { color: var(--color-neutral-600); }
+  .input:hover { border-color: color-mix(in srgb, var(--color-text) 45%, transparent); }
+  .input:focus-visible { border-color: var(--color-accent); outline-offset: 0; }
+  textarea.input { min-height: 90px; resize: vertical; }
+  select.input { appearance: none; padding-right: 28px; background-image: linear-gradient(45deg, transparent 50%, var(--color-neutral-400) 50%), linear-gradient(135deg, var(--color-neutral-400) 50%, transparent 50%); background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+  .input-mono { font-family: var(--font-mono); font-size: 13px; }
+  .field-error { font-size: 12px; color: var(--color-hard); margin-top: 4px; }
+
+  /* Segmented control */
+  .seg {
+    display: inline-flex; overflow: hidden;
+    border: 1px solid var(--color-divider); border-radius: var(--radius-md);
+  }
+  .seg-opt {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 12px; font-size: 13px; cursor: pointer;
+    background: transparent; border: 0; color: var(--color-text); font-family: inherit;
+  }
+  .seg-opt + .seg-opt { border-left: 1px solid var(--color-divider); }
+  .seg-opt[aria-pressed='true'], .seg-opt[aria-checked='true'] { color: var(--color-accent); box-shadow: inset 0 0 0 1px var(--color-accent); }
+  .seg-opt:not([aria-pressed='true']):not([aria-checked='true']):hover { background: color-mix(in srgb, var(--color-text) 7%, transparent); }
+
+  /* Filter pill */
+  .pill {
+    font: inherit; font-size: 13px; padding: 6px 14px; border-radius: 999px;
+    background: transparent; cursor: pointer;
+    border: 1px solid var(--color-divider); color: var(--color-neutral-300);
+  }
+  .pill[aria-pressed='true'] { border-color: var(--color-accent); color: var(--color-accent); }
+
+  /* Underlined tab */
+  .tab {
+    font: inherit; font-size: 14px; padding: 12px 0; background: none; border: 0; cursor: pointer;
+    color: var(--color-neutral-400); box-shadow: inset 0 -1px 0 transparent;
+  }
+  .tab[aria-selected='true'] { color: var(--color-text); box-shadow: inset 0 -1px 0 var(--color-accent); }
+  .tab:hover { color: var(--color-text); }
+
+  /* — cards — */
+  .card {
+    display: flex; flex-direction: column; gap: 5.6px;
+    padding: 8.4px; border-radius: var(--radius-md); background: var(--color-surface);
+  }
+  .card-kicker { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent); }
+  .card-title { font-weight: 500; font-size: 17px; line-height: 1.2; }
+  .card-body { margin: 0; font-size: 13px; opacity: 0.8; flex: 1; }
+  .elev-sm { box-shadow: var(--shadow-hairline); }
+  .elev-md { box-shadow: var(--shadow-raised); }
+  .elev-lg { box-shadow: var(--shadow-float); }
+
+  /* — tags — */
+  .tag {
+    display: inline-flex; align-items: center; font-size: 11px;
+    letter-spacing: 0.02em; padding: 3px 10px; white-space: nowrap;
+    border-radius: 6px;
+  }
+  .tag-accent { background: var(--color-accent-800); color: var(--color-accent-100); }
+  .tag-neutral { background: var(--color-neutral-800); color: var(--color-neutral-100); }
+  .tag-outline { border: 1px solid var(--color-accent); color: var(--color-accent); }
+
+  /* — tables — rows paint a fading rule */
+  .table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  .table th {
+    text-align: left; font-size: 11px; font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-text) 60%, transparent);
+    padding: 5.6px 8px;
+  }
+  .table td { padding: 14px 8px; }
+  .table thead tr {
+    background: linear-gradient(to right, transparent, var(--color-divider) 48px, var(--color-divider) calc(100% - 48px), transparent) no-repeat bottom / 100% 1px;
+  }
+  .table tbody tr {
+    background: linear-gradient(to right, transparent, var(--color-hairline) 48px, var(--color-hairline) calc(100% - 48px), transparent) no-repeat bottom / 100% 1px;
+  }
+  .table tbody tr:hover {
+    background:
+      linear-gradient(color-mix(in srgb, var(--color-text) 4%, transparent), color-mix(in srgb, var(--color-text) 4%, transparent)) no-repeat 0 0 / 100% 100%,
+      linear-gradient(to right, transparent, var(--color-hairline) 48px, var(--color-hairline) calc(100% - 48px), transparent) no-repeat bottom / 100% 1px;
+  }
+
+  /* — dialog — */
+  .dialog-backdrop {
+    position: fixed; inset: 0; z-index: 100; display: grid; place-items: center;
+    padding: 16px;
+    background: color-mix(in srgb, black 60%, transparent);
+  }
+  .dialog {
+    width: min(440px, 100%); display: flex; flex-direction: column; gap: 12px;
+    padding: 20px; border-radius: var(--radius-lg);
+    background: var(--color-surface); box-shadow: var(--shadow-float);
+  }
+
+  /* Brand mark: the boxed double caret */
+  .brand-mark {
+    width: 24px; height: 24px; border: 1px solid var(--color-accent); border-radius: 7px;
+    display: grid; place-items: center; color: var(--color-accent);
+  }
+
+  .avatar {
+    border-radius: 50%; display: grid; place-items: center; flex: none; overflow: hidden;
+    background: var(--color-accent-800); color: var(--color-accent-100);
+  }
+
+  /* Code surfaces */
+  .code-surface { background: color-mix(in srgb, black 12%, var(--color-bg)); }
+
+  .tnum { font-feature-settings: 'tnum' 1; font-variant-numeric: tabular-nums; }
+
+  /* ── v2 additions ─────────────────────────────────────────────── */
+
+  /* Tinted status pill: color comes from --pill (ok / warn / err / accent) */
+  .pill-status {
+    display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+    font-size: 12px; padding: 2px 8px; border-radius: 6px;
+    color: var(--pill, var(--color-neutral-300));
+    background: color-mix(in srgb, var(--pill, var(--color-neutral-300)) 12%, transparent);
+  }
+
+  /* Bordered panel used for cards, stat grids and the featured contest */
+  .panel {
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+    box-shadow: inset 0 0 0 1px var(--color-neutral-800);
+  }
+  .panel-quiet { border-radius: 12px; box-shadow: inset 0 0 0 1px var(--color-neutral-900); }
+
+  /* Stat strip: equal cells divided by hairlines */
+  .stat-grid {
+    display: grid; border-radius: 12px; overflow: hidden;
+    box-shadow: inset 0 0 0 1px var(--color-neutral-800);
+  }
+  .stat-grid > * { padding: 16px 18px; }
+  .stat-grid > * + * { box-shadow: inset 1px 0 0 var(--color-neutral-800); }
+  @media (max-width: 767px) {
+    .stat-grid > *:nth-child(odd) { box-shadow: none; }
+    .stat-grid > *:nth-child(even) { box-shadow: inset 1px 0 0 var(--color-neutral-800); }
+    .stat-grid > *:nth-child(n + 3) { box-shadow: inset 0 1px 0 var(--color-neutral-800); }
+    .stat-grid > *:nth-child(4) { box-shadow: inset 1px 1px 0 var(--color-neutral-800); }
+  }
+
+  /* Page container inside the app shell */
+  .page { padding: 32px 40px 56px; max-width: 1240px; }
+  @media (max-width: 767px) { .page { padding: 20px 16px 96px; } }
+  .page-title { font-size: 30px; font-weight: 500; letter-spacing: -0.015em; margin: 0; }
+  @media (max-width: 767px) { .page-title { font-size: 26px; } }
+  .page-sub { font-size: 14px; color: var(--color-neutral-400); margin: 4px 0 0; }
+
+  /* Dropdown trigger ("Difficulty  All ▾") */
+  .dropdown-trigger {
+    display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+    padding: 7px 10px; border-radius: var(--radius-md); font: inherit; font-size: 13px; cursor: pointer;
+    background: transparent; color: var(--color-neutral-400); border: 1px solid var(--color-neutral-800);
+  }
+  .dropdown-trigger:hover { border-color: var(--color-neutral-700); }
+  .dropdown-trigger strong { color: var(--color-text); font-weight: 500; }
+  .menu {
+    position: absolute; z-index: 40; min-width: 180px; padding: 4px; border-radius: 10px;
+    background: var(--color-surface); box-shadow: var(--shadow-float); animation: al-pop 140ms ease-out;
+  }
+  .menu-item {
+    display: flex; width: 100%; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px;
+    background: none; border: 0; font: inherit; font-size: 13.5px; color: var(--color-neutral-200); cursor: pointer; text-align: left;
+  }
+  .menu-item:hover, .menu-item[aria-selected='true'] { background: color-mix(in srgb, var(--color-text) 7%, transparent); color: var(--color-text); }
+
+  /* Topic chip filter */
+  .chip {
+    font: inherit; font-size: 13px; padding: 4px 11px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+    background: transparent; color: var(--color-neutral-300); border: 1px solid var(--color-neutral-800);
+  }
+  .chip:hover { border-color: var(--color-neutral-700); }
+  .chip[aria-pressed='true'] { color: var(--color-text); background: var(--color-accent-900); border-color: var(--color-accent-700); }
+
+  .fade-in { animation: al-fade 180ms ease-out; }
+
+  /* Legacy helpers still used by screens outside the redesign, retuned to the tokens */
   .glass-panel {
-    @apply bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-2xl;
+    background: var(--color-surface);
+    box-shadow: var(--shadow-hairline);
   }
-
-  .brand-gradient {
-    @apply bg-linear-to-r from-cyan-400 via-sky-300 to-purple-400 bg-clip-text text-transparent;
-  }
-
-  .btn-primary {
-    @apply relative overflow-hidden rounded-xl px-5 py-2.5 font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_35px_rgba(6,182,212,0.35)] active:translate-y-0;
-    background: linear-gradient(100deg, rgb(8 145 178), rgb(147 51 234));
-  }
-
-  .btn-secondary {
-    @apply rounded-xl border border-white/15 px-5 py-2.5 font-semibold text-slate-200 transition-all duration-300 hover:border-cyan-400/60 hover:text-cyan-300 hover:bg-white/5;
-  }
-
-  .animate-bounce-slow {
-    animation: bounce 4s infinite;
-  }
-  .animate-pulse-slow {
-    animation: pulse 6s infinite;
-  }
+  .brand-gradient { color: var(--color-accent); }
+  .custom-scrollbar::-webkit-scrollbar { width: 8px; }
 }
+
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+.animate-spin-slow { animation: spin-slow 1.2s linear infinite; }
+
+@keyframes al-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes al-pop { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes al-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.9; } }

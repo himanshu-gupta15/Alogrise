@@ -544,7 +544,9 @@ const authSlice = createSlice({
   initialState: {
     user: null,
     isAuthenticated: false,
-    loading: true,
+    loading: false,
+    // True only until the first /user/check finishes; gates the full-page spinner
+    initializing: true,
     error: null,
     allUsers: [],
   },
@@ -632,17 +634,24 @@ const authSlice = createSlice({
       })
       .addCase(checkAuth.fulfilled, (state, action) => {
         state.loading = false;
+        state.initializing = false;
         state.user = action.payload;
         state.isAuthenticated = !!action.payload;
       })
       .addCase(checkAuth.rejected, (state) => {
         state.loading = false;
+        state.initializing = false;
         state.user = null;
         state.isAuthenticated = false;
       })
 
       // LOGOUT
       .addCase(logoutUser.fulfilled, (state) => {
+        state.user = null;
+        state.isAuthenticated = false;
+      })
+      // Even if the server call fails (e.g. expired token), the user should end up logged out
+      .addCase(logoutUser.rejected, (state) => {
         state.user = null;
         state.isAuthenticated = false;
       });

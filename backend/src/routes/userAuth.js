@@ -16,7 +16,7 @@ authRouter.put('/profile', userMiddleware, updateMyProfile)
 authRouter.post('/follow/:userId', userMiddleware, toggleFollowUser)
 authRouter.post('/admin/promote/:userId',adminMiddleware,promoteUser);
 authRouter.delete('/deleteProfile',userMiddleware,deleteProfile)
-authRouter.get('/admin/users',getAllUsers)
+authRouter.get('/admin/users',adminMiddleware,getAllUsers)
 authRouter.get('/check', userMiddleware, (req, res) => {
     // You need to include the new gamification fields here!
     const reply = {

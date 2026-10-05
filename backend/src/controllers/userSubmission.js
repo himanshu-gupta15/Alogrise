@@ -197,8 +197,8 @@ const submitCode = async (req, res) => {
         runtime += parseFloat(test.time || 0);
         memory = Math.max(memory, test.memory || 0);
       } else {
-        // If any test case fails, the overall status is no longer accepted
-        status = (test.status_id === 4) ? 'error' : 'wrong';
+        // Judge0: 4 = Wrong Answer; anything else (compile error, TLE, runtime error) is an error
+        status = (test.status_id === 4) ? 'wrong' : 'error';
         errorMessage = test.stderr || test.compile_output || "Logic Error";
         // Optional: break; // Remove break if you want to count all passed cases even after a failure
       }
@@ -215,9 +215,10 @@ const submitCode = async (req, res) => {
     const accepted = (status === 'accepted');
 
     /* ================= UPDATING GAMIFICATION ================= */
+    let userStats = {};
     if (accepted) {
-      // Updates Himanshu's streak, XP, and global rank
-      await handleStreakAndSolved(userId, problemId);
+      // Updates the user's streak, XP, and global rank
+      userStats = (await handleStreakAndSolved(userId, problemId)) || {};
     }
     /* ========================================================= */
 
@@ -227,7 +228,9 @@ const submitCode = async (req, res) => {
       passedTestCases: testCasesPassed,
       testCase: testResult,
       runtime,
-      memory
+      memory,
+      errorMessage,
+      ...userStats
     });
   } catch (error) {
     res.status(500).send("Internal Server Error: " + error.message);
@@ -248,6 +251,7 @@ const runcode = async (req, res) => {
         }
 
         const problem = await Problem.findById(problemId);
+        if (!problem) return res.status(404).send("Problem not found");
         if (language === 'cpp') language = 'c++';
 
         const languageId = getLanguageById(language);
@@ -265,13 +269,14 @@ const runcode = async (req, res) => {
         let runtime = 0;
         let memory = 0;
         let success = true;
+        let errorMessage = null;
 
         for (const test of testResult) {
-            if (test.status_id === 3 || test.status_id === 4) {
-                runtime += parseFloat(test.time || 0);
-                memory = Math.max(memory, test.memory || 0);
-            } else {
+            runtime += parseFloat(test.time || 0);
+            memory = Math.max(memory, test.memory || 0);
+            if (test.status_id !== 3) {
                 success = false;
+                errorMessage = errorMessage || test.stderr || test.compile_output || null;
             }
         }
 
@@ -279,7 +284,8 @@ const runcode = async (req, res) => {
             success,
             testCase: testResult,
             runtime,
-            memory
+            memory,
+            errorMessage
         });
     } catch (error) {
         res.status(500).send("Internal Server Error: " + error.message);

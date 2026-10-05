@@ -1,376 +1,394 @@
-
-
-import { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { ArrowRight, Building2, ChevronRight, CircleCheck, Contrast, Plus, Search, Sunrise, X } from 'lucide-react';
 import axiosClient from '../utils/axiosClient';
-import {
-  CheckCircle2,
-  Zap,
-  Terminal,
-  Search,
-  LayoutList,
-  Building2,
-  Sparkles,
-  X
-} from 'lucide-react';
+import { getDailyChallenge } from '../utils/DailyChallenge';
+import { Dropdown, Notice, PageLoader } from './ui';
+import { capitalize, difficultyColor, pad2 } from '../utils/format';
 
-/* ================= COMPONENT ================= */
+const PAGE_SIZE = 20;
+
+const DIFFICULTY_OPTIONS = [
+  { value: 'All', label: 'All' },
+  { value: 'easy', label: 'Easy', dot: 'var(--color-easy)' },
+  { value: 'medium', label: 'Medium', dot: 'var(--color-medium)' },
+  { value: 'hard', label: 'Hard', dot: 'var(--color-hard)' },
+];
+
+const STATUS_OPTIONS = [
+  { value: 'All', label: 'All' },
+  { value: 'solved', label: 'Solved', dot: 'var(--color-ok)' },
+  { value: 'attempted', label: 'Attempted', dot: 'var(--color-warn)' },
+  { value: 'todo', label: 'Not started', dot: 'var(--color-neutral-600)' },
+];
+
+const asList = (value) =>
+  Array.isArray(value) ? value.map((v) => String(v)).filter(Boolean) : String(value || '').split(',').map((v) => v.trim()).filter(Boolean);
+
+// The daily challenge is picked from the UTC date, so it resets at UTC midnight
+const msUntilUtcMidnight = (now) => {
+  const d = new Date(now);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1) - now;
+};
+
+const formatLeft = (ms) => {
+  const mins = Math.max(0, Math.floor(ms / 60000));
+  return `${Math.floor(mins / 60)}h ${pad2(mins % 60)}m`;
+};
+
+const StatusIcon = ({ status }) => {
+  if (status === 'solved') return <CircleCheck size={16} style={{ color: 'var(--color-ok)' }} aria-label="Solved" />;
+  if (status === 'attempted') return <Contrast size={16} style={{ color: 'var(--color-warn)' }} aria-label="Attempted" />;
+  return <span className="block h-3.75 w-3.75 rounded-full border border-neutral-700" aria-label="Not started" />;
+};
 
 function ProblemPractice() {
-  // Accessing user data from Redux state
-  const { user } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
+  const { user } = useSelector((state: any) => state.auth);
 
-  const [problems, setProblems] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [problems, setProblems] = useState<any[]>([]);
+  const [attempted, setAttempted] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(Date.now());
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(8);
+  const [difficulty, setDifficulty] = useState('All');
+  const [status, setStatus] = useState('All');
+  const [topic, setTopic] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [limit, setLimit] = useState(PAGE_SIZE);
 
-  const [filters, setFilters] = useState({
-    difficulty: 'all',
-    tag: 'all',
-    status: 'all'
-  });
-
-  const [activePack, setActivePack] = useState(() => {
-    const saved = localStorage.getItem('activePack');
+  const [activePack, setActivePack] = useState<any>(() => {
     try {
+      const saved = localStorage.getItem('activePack');
       return saved ? JSON.parse(saved) : null;
-    } catch (e) {
+    } catch {
       return null;
     }
   });
+  const [purchaseNotice, setPurchaseNotice] = useState<{ type: string; message: string } | null>(null);
 
-  const [purchaseNotice, setPurchaseNotice] = useState(null);
+  /* ================= STRIPE REDIRECT ================= */
 
-  const formatTags = (tags) => (Array.isArray(tags) ? tags.join(', ') : String(tags || ''));
-
-  const hasTagMatch = (tags, query) => {
-    if (!query || query === 'all') return true;
-    if (Array.isArray(tags)) {
-      return tags.some((tag) => String(tag).toLowerCase().includes(query.toLowerCase()));
-    }
-    return String(tags || '').toLowerCase().includes(query.toLowerCase());
-  };
-
-  // On mount, check for Stripe redirect params and confirm purchase with backend
+  // After checkout, Stripe sends the user back here; confirm the purchase with the backend
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const success = params.get('checkout_success');
     const sessionId = params.get('session_id');
     const pack = params.get('pack');
+    if (!success || !sessionId) return;
 
-    if (success && sessionId) {
-      (async () => {
-        try {
-          setPurchaseNotice({ type: 'info', message: 'Verifying purchase...' });
-          const { data } = await axiosClient.post('/payment/confirm', { sessionId });
-          if (data?.purchase) {
-            setPurchaseNotice({ type: 'success', message: 'Purchase successful. Pack unlocked.' });
-            if (pack) {
-              try {
-                const { data: packsList } = await axiosClient.get('/interview/packs');
-                const matchedPack = packsList.find(p => p.packId === pack);
-                if (matchedPack) {
-                  const active = { id: matchedPack.packId, company: matchedPack.company, role: matchedPack.role, problems: matchedPack.problems || [] };
-                  localStorage.setItem('activePack', JSON.stringify(active));
-                  setActivePack(active);
-                }
-              } catch (err) {
-                console.error('Failed to auto-start purchased pack', err);
+    (async () => {
+      try {
+        setPurchaseNotice({ type: 'info', message: 'Verifying purchase…' });
+        const { data } = await axiosClient.post('/payment/confirm', { sessionId });
+        if (data?.purchase?.paid) {
+          setPurchaseNotice({ type: 'success', message: 'Purchase successful. Pack unlocked.' });
+          if (pack) {
+            try {
+              const { data: packsList } = await axiosClient.get('/interview/packs');
+              const matchedPack = packsList.find((p: any) => p.packId === pack);
+              if (matchedPack) {
+                const active = { id: matchedPack.packId, company: matchedPack.company, role: matchedPack.role, problems: matchedPack.problems || [] };
+                localStorage.setItem('activePack', JSON.stringify(active));
+                setActivePack(active);
               }
+            } catch (err) {
+              console.error('Failed to auto-start purchased pack', err);
             }
-          } else {
-            setPurchaseNotice({ type: 'error', message: data?.error || 'Purchase could not be confirmed.' });
           }
-        } catch (err) {
-          setPurchaseNotice({ type: 'error', message: err?.response?.data?.error || 'Purchase confirmation failed.' });
-        } finally {
-          // remove query params to keep UI clean
-          try {
-            const url = new URL(window.location.href);
-            url.searchParams.delete('checkout_success');
-            url.searchParams.delete('session_id');
-            url.searchParams.delete('pack');
-            window.history.replaceState({}, document.title, url.toString());
-          } catch (e) {
-            // ignore
-          }
+        } else {
+          setPurchaseNotice({ type: 'error', message: data?.error || 'Purchase could not be confirmed.' });
         }
-      })();
-    }
+      } catch (err: any) {
+        setPurchaseNotice({ type: 'error', message: err?.response?.data?.error || 'Purchase confirmation failed.' });
+      } finally {
+        try {
+          const url = new URL(window.location.href);
+          ['checkout_success', 'session_id', 'pack'].forEach((k) => url.searchParams.delete(k));
+          window.history.replaceState({}, document.title, url.toString());
+        } catch {
+          // ignore
+        }
+      }
+    })();
   }, []);
 
-  /* ================= DATA FETCHING ================= */
+  /* ================= DATA ================= */
 
   useEffect(() => {
     const fetchProblems = async () => {
       setLoading(true);
       try {
-        // Fetching problems which now include the 'isSolved' boolean from the controller
-        const { data } = await axiosClient.get('/problem/getAllProblem');
-        setProblems(data);
+        const [{ data }, subs] = await Promise.all([
+          axiosClient.get('/problem/getAllProblem'),
+          axiosClient.get('/problem/mySubmissions').catch(() => ({ data: [] })),
+        ]);
+        setProblems(Array.isArray(data) ? data : []);
+        // Anything submitted but not solved counts as "attempted"
+        setAttempted(new Set((Array.isArray(subs.data) ? subs.data : []).map((s: any) => s.problemId?._id).filter(Boolean)));
       } catch (error) {
         console.error('Error fetching problems:', error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchProblems();
-  }, [user]);
+  }, [user?._id]);
 
-  /* ================= FILTERING LOGIC ================= */
-
-  const filteredProblems = problems.filter((problem) => {
-    if (activePack) {
-      const packProblems = Array.isArray(activePack.problems) ? activePack.problems : [];
-      if (packProblems.length > 0) {
-        if (!packProblems.includes(problem._id)) return false;
-      } else if (activePack.company) {
-        // Fallback for legacy packs
-        const pCompanies = Array.isArray(problem.companies) ? problem.companies : [];
-        const hasCompany = pCompanies.some(c => c.toLowerCase() === activePack.company.toLowerCase());
-        if (!hasCompany) return false;
-      }
-    }
-
-    // 1. Difficulty Match
-    const difficultyMatch =
-      filters.difficulty === 'all' ||
-      problem.difficulty.toLowerCase() === filters.difficulty.toLowerCase();
-
-    // 2. Tag Match
-    const tagMatch = hasTagMatch(problem.tags, filters.tag);
-
-    // 3. Search Match
-    const searchMatch = problem.title.toLowerCase().includes(searchTerm.toLowerCase());
-
-    // 4. Status Match (Directly using isSolved from your updated controller)
-    const statusMatch =
-      filters.status === 'all' ||
-      (filters.status === 'solved' ? problem.isSolved : !problem.isSolved);
-
-    return difficultyMatch && tagMatch && statusMatch && searchMatch;
-  });
-
-  // Pagination derived values
-  const totalProblems = filteredProblems.length;
-  const totalPages = Math.max(1, Math.ceil(totalProblems / pageSize));
-
-  // Keep current page valid when filters/search change
   useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages);
-    if (currentPage < 1) setCurrentPage(1);
-  }, [currentPage, totalPages]);
+    const t = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(t);
+  }, []);
 
-  const paginatedProblems = filteredProblems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  /* ================= DERIVED ================= */
 
-  /* ================= DYNAMIC STYLES ================= */
+  const statusOf = (p: any) => (p.isSolved ? 'solved' : attempted.has(p._id) ? 'attempted' : 'todo');
 
-  const getDifficultyStyles = (difficulty) => {
-    switch (difficulty?.toLowerCase()) {
-      case 'easy':
-        return 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10';
-      case 'medium':
-        return 'text-amber-400 border-amber-500/30 bg-amber-500/10';
-      case 'hard':
-        return 'text-rose-400 border-rose-500/30 bg-rose-500/10';
-      default:
-        return 'text-slate-400 border-white/10 bg-white/5';
+  // Problems in scope: everything, or only the active interview pack's problems
+  const scoped = useMemo(() => {
+    if (!activePack) return problems;
+    const packProblems = Array.isArray(activePack.problems) ? activePack.problems : [];
+    if (packProblems.length > 0) return problems.filter((p) => packProblems.includes(p._id));
+    if (activePack.company) {
+      const company = activePack.company.toLowerCase();
+      return problems.filter((p) => asList(p.companies).some((c) => c.toLowerCase() === company));
     }
+    return problems;
+  }, [problems, activePack]);
+
+  const topTopics = useMemo(() => {
+    const counts = new Map<string, number>();
+    scoped.forEach((p) => asList(p.tags).forEach((t) => counts.set(t.toLowerCase(), (counts.get(t.toLowerCase()) || 0) + 1)));
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t]) => t);
+  }, [scoped]);
+
+  const filtered = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return scoped.filter((p) => {
+      if (difficulty !== 'All' && p.difficulty?.toLowerCase() !== difficulty) return false;
+      if (status !== 'All' && statusOf(p) !== status) return false;
+      if (topic && !asList(p.tags).some((t) => t.toLowerCase() === topic)) return false;
+      return !q || p.title?.toLowerCase().includes(q);
+    });
+    // statusOf depends on attempted
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scoped, difficulty, status, topic, searchTerm, attempted]);
+
+  useEffect(() => setLimit(PAGE_SIZE), [difficulty, status, topic, searchTerm, activePack]);
+
+  const rows = filtered.slice(0, limit);
+  const numberOf = useMemo(() => new Map(problems.map((p, i) => [p._id, i + 1])), [problems]);
+  const daily = useMemo(() => getDailyChallenge(problems), [problems]);
+
+  const progress = useMemo(() => {
+    const bars = ['easy', 'medium', 'hard'].map((key) => {
+      const ofLevel = problems.filter((p) => p.difficulty?.toLowerCase() === key);
+      const solved = ofLevel.filter((p) => p.isSolved).length;
+      return { key, label: capitalize(key), solved, total: ofLevel.length, pct: ofLevel.length ? (solved / ofLevel.length) * 100 : 0 };
+    });
+    return { solved: problems.filter((p) => p.isSolved).length, total: problems.length, bars };
+  }, [problems]);
+
+  const clearFilters = () => {
+    setDifficulty('All');
+    setStatus('All');
+    setTopic('');
+    setSearchTerm('');
   };
 
-  /* ================= LOADING STATE ================= */
-
-  if (loading) {
-    return (
-      <div className="h-screen bg-black flex flex-col justify-center items-center">
-        <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin"></div>
-        <p className="mt-4 font-mono text-cyan-500 tracking-[0.28em] text-[10px] animate-pulse uppercase">Loading problems...</p>
-      </div>
-    );
-  }
+  if (loading) return <PageLoader label="Loading problems…" />;
 
   return (
-    <div className="relative min-h-screen overflow-hidden pb-24 text-white selection:bg-cyan-500/30">
-      {/* Background Decor */}
-      <div className="absolute top-0 right-0 h-200 w-200 rounded-full bg-cyan-500/5 blur-[150px] pointer-events-none animate-pulse"></div>
-
-      <div className="container relative z-10 mx-auto px-6 pt-20">
-        
-        <div className="mb-16 animate-in fade-in slide-in-from-left duration-700">
-          <div className="mb-4 flex items-center gap-2 font-mono text-sm tracking-[0.28em] text-cyan-400 uppercase">
-             <LayoutList size={14} /> Problem Library
-          </div>
-          <h1 className="text-5xl font-black tracking-tight md:text-6xl">
-            Practice with <span className="brand-gradient">clarity and focus</span>
-          </h1>
-          <p className="mt-5 max-w-2xl text-base text-slate-400 md:text-lg">
-            {user ? `${user.firstName}, choose a problem and improve one step at a time.` : 'Select a problem and start coding.'}
+    <div className="page fade-in">
+      <div className="flex flex-wrap items-start gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="page-title">Problems</h1>
+          <p className="page-sub">
+            {problems.length} curated problem{problems.length === 1 ? '' : 's'}. Filter by difficulty, topic or status.
           </p>
         </div>
+        <Link to={user?.role === 'admin' ? '/admin/create' : '/create-problem'} className="btn btn-secondary">
+          <Plus size={16} /> Contribute
+        </Link>
+      </div>
 
-        {purchaseNotice && (
-          <div className={`mb-6 rounded-2xl border px-4 py-3 text-sm ${purchaseNotice.type === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : purchaseNotice.type === 'info' ? 'border-cyan-400/30 bg-cyan-500/8 text-cyan-200' : 'border-rose-500/30 bg-rose-500/10 text-rose-200'}`}>
+      {purchaseNotice && (
+        <div className="mt-6">
+          <Notice type={purchaseNotice.type} onClose={() => setPurchaseNotice(null)}>
             {purchaseNotice.message}
-          </div>
-        )}
+          </Notice>
+        </div>
+      )}
 
-        {activePack && (
-          <div className="mb-8 p-6 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-pink-500/10 backdrop-blur-2xl rounded-4xl border border-amber-500/30 shadow-2xl relative overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
-            <div className="absolute top-0 right-0 h-40 w-40 rounded-full bg-amber-500/5 blur-3xl pointer-events-none"></div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
-              <div className="flex items-center gap-4">
-                <div className="rounded-2xl bg-amber-500/20 border border-amber-400/30 p-3 text-amber-300">
-                  <Building2 size={24} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-black uppercase tracking-[0.2em] text-amber-400">Mock Assessment Mode</span>
-                    <span className="flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300 border border-amber-500/30 animate-pulse">
-                      <Sparkles size={10} /> Active
-                    </span>
-                  </div>
-                  <h3 className="text-2xl font-black text-white mt-1 uppercase tracking-tight">
-                    {activePack.company} <span className="text-slate-400 text-lg font-medium tracking-normal lowercase first-letter:uppercase">({activePack.role})</span>
-                  </h3>
-                  <p className="text-sm text-slate-400 mt-1">
-                    Showing problems for <strong className="text-amber-300">{activePack.company}</strong> ({activePack.role}).
-                  </p>
-                </div>
+      {/* Daily challenge / pack + progress */}
+      <div className="mt-6 grid gap-3 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+        {activePack ? (
+          <div className="panel flex items-center gap-4 p-4">
+            <span className="grid h-10 w-10 flex-none place-items-center rounded-[10px] bg-accent-900 text-accent-200">
+              <Building2 size={20} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-[12.5px] text-neutral-400">Mock assessment</div>
+              <div className="mt-0.5 truncate text-[16px] font-medium">
+                {activePack.company} <span className="text-sm font-normal text-neutral-400">· {activePack.role}</span>
               </div>
-              <button
-                onClick={() => {
-                  localStorage.removeItem('activePack');
-                  setActivePack(null);
-                }}
-                className="inline-flex items-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-5 py-3 text-sm font-black uppercase tracking-widest text-rose-200 transition hover:bg-rose-500/20 hover:border-rose-400/50"
-              >
-                <X size={15} /> Exit Mode
-              </button>
             </div>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => {
+                localStorage.removeItem('activePack');
+                setActivePack(null);
+              }}
+            >
+              <X size={15} /> Exit
+            </button>
           </div>
+        ) : daily ? (
+          <Link to={`/problem/${daily._id}`} className="panel flex items-center gap-4 p-4 text-text hover:shadow-[inset_0_0_0_1px_var(--color-accent-700)]">
+            <span className="grid h-10 w-10 flex-none place-items-center rounded-[10px] bg-accent-900 text-accent-200">
+              <Sunrise size={20} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-[12.5px] text-neutral-400">Daily challenge · resets in {formatLeft(msUntilUtcMidnight(now))}</div>
+              <div className="mt-0.5 truncate text-[16px] font-medium">{daily.title}</div>
+            </div>
+            <span className="flex items-center gap-1 text-[13px]" style={{ color: daily.isSolved ? 'var(--color-ok)' : 'var(--color-accent)' }}>
+              {daily.isSolved ? '✓ Solved' : <>Solve <ArrowRight size={14} /></>}
+            </span>
+          </Link>
+        ) : (
+          <div className="panel p-4 text-sm text-neutral-400">No problems published yet.</div>
         )}
 
-        {/* Search & Filter Toolbar */}
-        <div className="flex flex-col xl:flex-row gap-6 mb-12 p-6 bg-white/3 backdrop-blur-2xl rounded-4xl border border-white/5 shadow-2xl">
-          <div className="relative flex-1">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500" size={22} />
-            <input 
-              type="text" 
-              placeholder="Search problem title..." 
-              className="w-full bg-black/40 border border-white/10 rounded-2xl py-5 pl-16 pr-6 focus:border-cyan-500/50 outline-none text-xl font-medium transition-all placeholder:text-slate-700"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        <div className="panel flex items-center gap-5 p-4">
+          <div className="flex-none">
+            <div className="tnum text-[22px] font-medium leading-none">
+              {progress.solved} <span className="text-[13px] font-normal text-neutral-500">/ {progress.total}</span>
+            </div>
+            <div className="mt-1.5 text-[12.5px] text-neutral-400">Solved</div>
           </div>
-
-          <div className="flex flex-wrap gap-4">
-            {[
-              { key: 'status', options: ['ALL', 'SOLVED', 'UNSOLVED'], label: 'STATUS' },
-              { key: 'difficulty', options: ['ALL', 'EASY', 'MEDIUM', 'HARD'], label: 'RANK' },
-              { key: 'tag', options: ['ALL', 'ARRAY', 'GRAPH', 'DP'], label: 'TAG' }
-            ].map((f) => (
-              <select
-                key={f.key}
-                value={filters[f.key]}
-                onChange={(e) => setFilters({ ...filters, [f.key]: e.target.value.toLowerCase() })}
-                className="bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-xl font-black uppercase tracking-widest outline-none focus:border-cyan-500 appearance-none cursor-pointer min-w-45 hover:bg-white/5 transition-colors"
-              >
-                {f.options.map(opt => <option key={opt} value={opt.toLowerCase()}>{f.label}: {opt}</option>)}
-              </select>
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            {progress.bars.map((b) => (
+              <div key={b.key} className="grid grid-cols-[56px_minmax(0,1fr)_52px] items-center gap-3 text-[12.5px]">
+                <span style={{ color: difficultyColor(b.key) }}>{b.label}</span>
+                <span className="h-1 rounded-sm bg-neutral-800">
+                  <span className="block h-1 rounded-sm" style={{ width: `${b.pct}%`, background: difficultyColor(b.key) }} />
+                </span>
+                <span className="tnum text-right text-neutral-400">
+                  {b.solved}/{b.total}
+                </span>
+              </div>
             ))}
           </div>
         </div>
-
-        {/* Problems List - Single Row Format */}
-        <div className="space-y-4">
-          {paginatedProblems.map((problem, idx) => {
-            const index = (currentPage - 1) * pageSize + idx;
-            return (
-              <NavLink
-                key={problem._id}
-                to={`/problem/${problem._id}`}
-                className="group flex items-center justify-between bg-white/2 border border-white/5 p-8 rounded-4xl hover:bg-white/5 hover:border-cyan-500/30 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4"
-                style={{ animationDelay: `${index * 40}ms` }}
-              >
-                {/* Left Side: Index & Problem Info */}
-                <div className="flex items-center gap-10">
-                  <span className="text-lg md:text-xl font-mono text-slate-500 w-10">{(index + 1).toString().padStart(2, '0')}</span>
-                  
-                  <div>
-                    <h2 className="text-xl md:text-2xl font-black text-white group-hover:text-cyan-400 transition-colors uppercase tracking-tight mb-2">
-                      {problem.title}
-                    </h2>
-                    <div className="flex items-center gap-6">
-                       <span className={`px-4 py-1 text-[15px] font-black uppercase tracking-[0.2em] border rounded-full ${getDifficultyStyles(problem.difficulty)}`}>
-                        {problem.difficulty}
-                      </span>
-                      <div className="flex items-center text-slate-500 text-[15px] font-black uppercase tracking-widest">
-                        <Terminal size={14} className="mr-2 text-cyan-500/50" />
-                        {formatTags(problem.tags)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Side: Dynamic Status Tag */}
-                <div className="flex items-center gap-8">
-                  {problem.isSolved ? (
-                    <div className="flex items-center gap-3 px-6 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.1)]">
-                       <CheckCircle2 className="text-emerald-400" size={16} />
-                       <span className="text-[15px] font-black text-emerald-400 uppercase tracking-widest">Solved</span>
-                    </div>
-                  ) : (
-                    <div className="px-6 py-2 bg-white/5 border border-white/10 rounded-xl group-hover:border-cyan-500/30 transition-all">
-                       <span className="text-[15px] font-black text-slate-500 group-hover:text-white uppercase tracking-widest">Solve</span>
-                    </div>
-                  )}
-                  <Zap className="text-slate-800 group-hover:text-cyan-400 group-hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] transition-all" size={28} />
-                </div>
-              </NavLink>
-            );
-          })}
-
-          {paginatedProblems.length === 0 && (
-            <div className="text-center py-32 bg-white/1 border border-dashed border-white/10 rounded-[3rem]">
-              <p className="text-slate-500 font-mono text-sm uppercase tracking-[0.28em] animate-pulse">No problems found for selected filters</p>
-            </div>
-          )}
-
-          {/* Pagination Controls */}
-          {totalProblems > 0 && (
-            <div className="mt-6 flex items-center justify-between">
-              <div className="text-sm text-slate-400">Showing {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, totalProblems)} of {totalProblems}</div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-2 rounded-md bg-black/40 border border-white/10 text-sm disabled:opacity-40"
-                >Prev</button>
-
-                {Array.from({ length: totalPages }).map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={`px-3 py-2 rounded-md text-sm ${currentPage === i + 1 ? 'bg-cyan-600 text-white' : 'bg-black/40 border border-white/10 text-slate-300'}`}
-                  >{i + 1}</button>
-                ))}
-
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-2 rounded-md bg-black/40 border border-white/10 text-sm disabled:opacity-40"
-                >Next</button>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
+
+      {/* Filters */}
+      <div className="mt-6 flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:w-80">
+          <Search size={15} className="absolute left-2.5 top-2.75 text-neutral-500" />
+          <input className="input pl-8" placeholder="Search problems" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        </div>
+        <Dropdown label="Difficulty" value={difficulty} options={DIFFICULTY_OPTIONS} onChange={setDifficulty} />
+        <Dropdown label="Status" value={status} options={STATUS_OPTIONS} onChange={setStatus} />
+      </div>
+      {topTopics.length > 0 && (
+        <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+          <button type="button" className="chip" aria-pressed={!topic} onClick={() => setTopic('')}>
+            All topics
+          </button>
+          {topTopics.map((t) => (
+            <button key={t} type="button" className="chip capitalize" aria-pressed={topic === t} onClick={() => setTopic(topic === t ? '' : t)}>
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Results */}
+      {rows.length === 0 ? (
+        <div className="panel-quiet mt-4 flex flex-col items-center px-5 py-14 text-center">
+          <Search size={28} className="text-neutral-600" />
+          <div className="mt-3 text-[15px] font-medium">No problems match these filters</div>
+          <div className="mt-1 text-[13px] text-neutral-400">Try a different topic or clear the filters.</div>
+          <button type="button" className="btn btn-secondary mt-4" onClick={clearFilters}>
+            Clear filters
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Desktop table */}
+          <div className="mt-3 hidden md:block">
+          <table className="table">
+            <thead>
+              <tr>
+                <th style={{ width: 36 }} />
+                <th>Title</th>
+                <th>Topics</th>
+                <th style={{ width: 110 }}>Difficulty</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((p) => (
+                <tr key={p._id} className="cursor-pointer" onClick={() => navigate(`/problem/${p._id}`)}>
+                  <td style={{ padding: '12px 8px' }}>
+                    <StatusIcon status={statusOf(p)} />
+                  </td>
+                  <td style={{ padding: '12px 8px' }}>
+                    <Link to={`/problem/${p._id}`} className="text-text hover:text-accent" onClick={(e) => e.stopPropagation()}>
+                      {numberOf.get(p._id)}. {p.title}
+                    </Link>
+                  </td>
+                  <td style={{ padding: '12px 8px' }}>
+                    <span className="flex flex-wrap gap-1.5">
+                      {asList(p.tags).slice(0, 2).map((t) => (
+                        <span key={t} className="tag tag-neutral capitalize">
+                          {t}
+                        </span>
+                      ))}
+                    </span>
+                  </td>
+                  <td className="text-sm" style={{ padding: '12px 8px', color: difficultyColor(p.difficulty) }}>
+                    {capitalize(p.difficulty)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </div>
+
+          {/* Mobile list */}
+          <div className="mt-3 md:hidden">
+            {rows.map((p) => (
+              <Link key={p._id} to={`/problem/${p._id}`} className="row-rule flex items-center gap-3 py-3.5 text-text">
+                <StatusIcon status={statusOf(p)} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px]">{p.title}</span>
+                  <span className="mt-0.5 block truncate text-[12.5px] capitalize text-neutral-500">
+                    <span style={{ color: difficultyColor(p.difficulty) }}>{capitalize(p.difficulty)}</span>
+                    {asList(p.tags).length ? ` · ${asList(p.tags).slice(0, 2).join(' · ')}` : ''}
+                  </span>
+                </span>
+                <ChevronRight size={16} className="text-neutral-600" />
+              </Link>
+            ))}
+          </div>
+
+          <div className="mt-4 flex items-center gap-3 text-[13px] text-neutral-500">
+            <span className="tnum">
+              Showing {rows.length} of {filtered.length}
+            </span>
+            <span className="flex-1" />
+            {rows.length < filtered.length && (
+              <button type="button" className="btn btn-secondary" onClick={() => setLimit((l) => l + PAGE_SIZE)}>
+                Load more
+              </button>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

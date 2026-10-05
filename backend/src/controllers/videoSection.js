@@ -153,7 +153,8 @@ const deleteVideo = async (req, res) => {
     const { problemId } = req.params;
     const userId = req.result._id;
 
-    const video = await SolutionVideo.findOneAndDelete({problemId:problemId});
+    // Remove the video users currently see (the newest one)
+    const video = await SolutionVideo.findOneAndDelete({ problemId }, { sort: { createdAt: -1 } });
     
    
 

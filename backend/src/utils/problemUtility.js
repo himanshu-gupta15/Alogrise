@@ -109,7 +109,8 @@ const submitToken = async(resultToken)=>{
     }
   }
 
-  while(true){
+  const maxAttempts = 30;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const result = await fetchData();
     const IsResultObtained = result.submissions.every((r)=>r.status_id>2);
 
@@ -118,6 +119,7 @@ const submitToken = async(resultToken)=>{
 
     await waiting(1000);
   }
+  throw new Error("Judge0 timed out while evaluating the code");
 }
 
 export {getLanguageById,submitBatch,submitToken};

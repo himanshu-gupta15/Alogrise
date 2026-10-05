@@ -230,7 +230,7 @@ import { useDispatch, useSelector } from "react-redux";
 // User Components
 import Navbar from "./component/nav";
 import Footer from "./component/footer";
-import HomePage from "./pages/home";
+import Landing from "./pages/Landing";
 import Registration from "./pages/RegistrationForm";
 import Signin from "./pages/SignIn";
 import ProblemPage from "./pages/ProblemPage";
@@ -239,7 +239,7 @@ import MyProblems from "./pages/MyProblems";
 
 // Admin Components
 import Admin from "./pages/Admin";
-import AdminNavbar from "./component/AdminNavbar";
+import AppShell from "./component/AppShell";
     
 import UserManagement from "./component/UserManagement";
 import AdminPanel from "./component/AdminPanel";
@@ -256,101 +256,108 @@ import Leaderboard from "./component/Leaderboard";
 import Contest from "./component/Contest";
 import AdminContest from "./component/AdminContest";
 import Interview from "./pages/Interview";
+import { PageLoader } from "./component/ui";
+
+/* ================= ROUTE GUARDS ================= */
+// Defined outside App so React keeps the same component type between renders;
+// otherwise every auth-state update would remount the whole page.
+
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated, initializing } = useSelector((state) => state.auth);
+  if (initializing) return null;
+  if (!isAuthenticated) return <Navigate to="/signin" replace />;
+  return children;
+};
+
+const AdminRoute = ({ children }) => {
+  const { isAuthenticated, user, initializing } = useSelector((state) => state.auth);
+  if (initializing) return null;
+  if (!isAuthenticated) return <Navigate to="/signin" replace />;
+  if (user?.role !== "admin") return <Navigate to="/" replace />;
+  return children;
+};
+
+/**
+ * "/" shows the landing page to guests, the problem list to users,
+ * and sends admins to the admin dashboard.
+ */
+const HomeGuard = () => {
+  const { isAuthenticated, user, initializing } = useSelector((state) => state.auth);
+  if (initializing) return null;
+  if (!isAuthenticated) return <Landing />;
+  if (user?.role === "admin") return <Navigate to="/admin" replace />;
+  return <ProblemPractice />;
+};
 
 function App() {
   const dispatch = useDispatch();
   const location = useLocation();
-  const { isAuthenticated, user, loading } = useSelector((state) => state.auth);
+  const { isAuthenticated, initializing } = useSelector((state) => state.auth);
 
   useEffect(() => {
     dispatch(checkAuth());
   }, [dispatch]);
 
-  /* ================= ROUTE GUARDS ================= */
-
-  const ProtectedRoute = ({ children }) => {
-    if (loading) return null;
-    if (!isAuthenticated) return <Navigate to="/signin" replace />;
-    return children;
-  };
-
-  const AdminRoute = ({ children }) => {
-    if (loading) return null;
-    if (!isAuthenticated) return <Navigate to="/signin" replace />;
-    if (user?.role !== "admin") return <Navigate to="/" replace />;
-    return children;
-  };
-
-  /**
-   * Logic to show HomePage only to regular users.
-   * Redirects Guests to signup/signin and Admins to the admin dashboard.
-   */
-  const HomeGuard = () => {
-    if (loading) return null;
-    if (!isAuthenticated) return <Navigate to="/signin" replace />;
-    if (user?.role === "admin") return <Navigate to="/admin" replace />;
-    return <HomePage />;
-  };
-
-  // Determine if we should show Admin Navbar
-  const isAdminPath = location.pathname.startsWith('/admin');
+  // Signed-in pages live in the app shell (sidebar / tab bar); guests get the
+  // marketing nav + footer on the landing page and a bare sign-in screen
+  const isAuthPage = ['/signin', '/signup'].includes(location.pathname);
+  const isLanding = !isAuthenticated && location.pathname === '/';
 
   /* ================= LOADING SCREEN ================= */
 
-  if (loading) {
+  if (initializing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <span className="loading loading-spinner loading-lg text-cyan-500"></span>
-      </div>
+      <PageLoader />
     );
   }
 
+  const routes = (
+    <Routes>
+      {/* ================= USER-ONLY HOME ROUTE ================= */}
+      <Route path="/" element={<HomeGuard />} />
+      <Route path="/aboutus" element={<Navigate to="/interview" replace />} />
+
+      {/* ================= PUBLIC ROUTES ================= */}
+      <Route path="/signup" element={isAuthenticated ? <Navigate to="/" replace /> : <Registration />} />
+      <Route path="/signin" element={isAuthenticated ? <Navigate to="/" replace /> : <Signin />} />
+
+      {/* ================= USER ROUTES ================= */}
+       <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      <Route path="/practice" element={<ProtectedRoute><ProblemPractice /></ProtectedRoute>} />
+      <Route path="/interview" element={<ProtectedRoute><Interview /></ProtectedRoute>} />
+      <Route path="/contest" element={<ProtectedRoute><Contest /></ProtectedRoute>} />
+      <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+      <Route path="/problem/:problemId" element={<ProtectedRoute><ProblemPage /></ProtectedRoute>} />
+      <Route path="/my-problems" element={<ProtectedRoute><MyProblems /></ProtectedRoute>} />
+      <Route path="/create-problem" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
+
+      {/* ================= ADMIN ROUTES ================= */}
+      <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+      <Route path="/admin/create" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+      <Route path="/admin/contest" element={<AdminRoute><AdminContest /></AdminRoute>} />
+      <Route path="/admin/interview" element={<AdminRoute><AdminInterview /></AdminRoute>} />
+      <Route path="/admin/delete" element={<AdminRoute><AdminDelete /></AdminRoute>} />
+      <Route path="/admin/update" element={<AdminRoute><AdminUpdateList /></AdminRoute>} />
+     <Route path="/admin/update/:id" element={<AdminRoute><AdminUpdate_problem /></AdminRoute>} />
+      <Route path="/admin/user-management" element={<AdminRoute><UserManagement /></AdminRoute>} />
+      <Route path="/admin/video" element={<AdminRoute><AdminVideo /></AdminRoute>} />
+
+      <Route path="/admin/upload/:problemId" element={<AdminRoute><AdminUpload /></AdminRoute>} />
+
+      {/* ================= FALLBACK ================= */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+
+  if (isAuthenticated && !isAuthPage) {
+    return <AppShell>{routes}</AppShell>;
+  }
+
   return (
-    <div className="min-h-screen bg-transparent selection:bg-cyan-500/30">
-      {/* DYNAMIC NAVBAR SWITCHING */}
-      {isAuthenticated && user?.role === "admin" && isAdminPath ? (
-        <AdminNavbar />
-      ) : (
-        <Navbar />
-      )}
-
-      <Routes>
-        {/* ================= USER-ONLY HOME ROUTE ================= */}
-        <Route path="/" element={<HomeGuard />} />
-        <Route path="/aboutus" element={<Navigate to="/interview" replace />} />
-
-        {/* ================= PUBLIC ROUTES ================= */}
-        <Route path="/signup" element={isAuthenticated ? <Navigate to="/" replace /> : <Registration />} />
-        <Route path="/signin" element={isAuthenticated ? <Navigate to="/" replace /> : <Signin />} />
-
-        {/* ================= USER ROUTES ================= */}
-         <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/practice" element={<ProtectedRoute><ProblemPractice /></ProtectedRoute>} />
-        <Route path="/interview" element={<ProtectedRoute><Interview /></ProtectedRoute>} />
-        <Route path="/contest" element={<ProtectedRoute><Contest /></ProtectedRoute>} />
-        <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
-        <Route path="/problem/:problemId" element={<ProtectedRoute><ProblemPage /></ProtectedRoute>} />
-        <Route path="/my-problems" element={<ProtectedRoute><MyProblems /></ProtectedRoute>} />
-        <Route path="/create-problem" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
-
-        {/* ================= ADMIN ROUTES ================= */}
-        <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
-        <Route path="/admin/create" element={<AdminRoute><AdminPanel /></AdminRoute>} />
-        <Route path="/admin/contest" element={<AdminRoute><AdminContest /></AdminRoute>} />
-        <Route path="/admin/interview" element={<AdminRoute><AdminInterview /></AdminRoute>} />
-        <Route path="/admin/delete" element={<AdminRoute><AdminDelete /></AdminRoute>} />
-        <Route path="/admin/update" element={<AdminRoute><AdminUpdateList /></AdminRoute>} />
-       <Route path="/admin/update/:id" element={<AdminRoute><AdminUpdate_problem /></AdminRoute>} />
-        <Route path="/admin/user-management" element={<AdminRoute><UserManagement /></AdminRoute>} />
-        <Route path="/admin/video" element={<AdminRoute><AdminVideo /></AdminRoute>} />
-
-        <Route path="/admin/upload/:problemId" element={<AdminRoute><AdminUpload /></AdminRoute>} />
-
-        {/* ================= FALLBACK ================= */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-
-      <Footer />
+    <div className="min-h-screen">
+      {isLanding && <Navbar />}
+      {routes}
+      {isLanding && <Footer />}
     </div>
   );
 }

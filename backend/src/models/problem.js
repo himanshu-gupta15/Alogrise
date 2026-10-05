@@ -39,6 +39,11 @@ const problemSchema=new Schema({
             output:{
                 type:String,
                 required:true
+            },
+            // Shown under each example; optional for older problems
+            explanation:{
+                type:String,
+                default:''
             }
         }
     ],

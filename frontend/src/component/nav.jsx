@@ -1,419 +1,338 @@
-// import React, { useState } from 'react';
-// import { useNavigate, Link } from 'react-router-dom'; // Added Link for smoother navigation
-
-// const Navbar = () => {
-//   const [isOpen, setIsOpen] = useState(false);
-//   const navigate = useNavigate();
-
-//   // Helper to handle link paths
-//   const getPath = (item) => item.toLowerCase() === 'home' ? '/' : `/${item.toLowerCase().replace(' ', '')}`;
-
-//   return (
-//     <nav className="sticky top-0 z-50 w-full bg-black/80 backdrop-blur-xl border-b border-white/10 transition-all duration-500">
-//       <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
-      
-//       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-//         <div className="flex items-center justify-between h-20">
-          
-//           {/* LEFT SIDE: LOGO & NAV LINKS */}
-//           <div className="flex items-center gap-10">
-//             <Link to="/" className="flex items-center gap-3 group cursor-pointer">
-//               <div className="relative">
-//                 <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full blur opacity-40 group-hover:opacity-100 transition duration-500"></div>
-//                 <div className="relative w-10 h-10 rounded-full border border-white/20 overflow-hidden bg-black">
-//                   <img src="/logo.png" alt="ALGORISE" className="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" />
-//                 </div>
-//               </div>
-//               <span className="text-2xl font-black tracking-tighter bg-gradient-to-r from-white via-slate-200 to-slate-500 bg-clip-text text-transparent group-hover:from-cyan-400 group-hover:to-purple-500 transition-all duration-500">
-//                 ALGORISE
-//               </span>
-//             </Link>
-
-//             <div className="hidden md:flex items-center gap-8">
-//               {['Home', 'About Us', 'Practice'].map((item) => (
-//                 <Link key={item} to={getPath(item)} className="group relative">
-//                   <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-slate-100 via-slate-300 to-slate-500 bg-clip-text text-transparent group-hover:from-cyan-400 group-hover:to-purple-500 transition-all duration-500">
-//                     {item}
-//                   </span>
-//                 </Link>
-//               ))}
-//             </div>
-//           </div>
-
-//           {/* RIGHT SIDE: AUTH BUTTONS */}
-//           <div className="hidden md:flex items-center gap-8">
-//             <button 
-//               onClick={() => navigate('/signin')} 
-//               className="group relative transition-all duration-300"
-//             >
-//               <span className="text-lg font-black tracking-widest bg-gradient-to-r from-slate-400 via-slate-500 to-slate-600 bg-clip-text text-transparent group-hover:from-cyan-400 group-hover:to-purple-500 transition-all duration-500" onClick={() => navigate('/sigin')} >
-//                 SIGN IN
-//               </span>
-//             </button>
-            
-//             <button 
-//               onClick={() => navigate('/signup')} 
-//               className="group relative px-7 py-2.5"
-//             >
-//               <div className="absolute inset-0 bg-gradient-to-r from-[#FF00FF] to-[#00FFFF] rounded-full blur-md opacity-40 group-hover:opacity-80 transition duration-500"></div>
-//               <div className="relative flex items-center justify-center bg-black rounded-full px-7 py-2.5 border border-white/10 group-hover:border-white/0 transition-all">
-//                 <span className="bg-gradient-to-r from-[#FF00FF] to-[#00FFFF] bg-clip-text text-transparent font-bold text-lg tracking-wide group-hover:text-white transition duration-200">
-//                   Create Account
-//                 </span>
-//               </div>
-//             </button>
-//           </div>
-
-//           {/* Mobile Menu Icon */}
-//           <div className="md:hidden flex items-center">
-//             <button onClick={() => setIsOpen(!isOpen)} className="text-white p-2 focus:outline-none">
-//               <div className="w-6 h-5 flex flex-col justify-between">
-//                 <span className={`h-0.5 w-full bg-white transition-all duration-300 transform origin-left ${isOpen ? 'rotate-[42deg]' : ''}`}></span>
-//                 <span className={`h-0.5 w-full bg-white transition-all duration-300 ${isOpen ? 'opacity-0' : 'opacity-100'}`}></span>
-//                 <span className={`h-0.5 w-full bg-white transition-all duration-300 transform origin-left ${isOpen ? '-rotate-[42deg]' : ''}`}></span>
-//               </div>
-//             </button>
-//           </div> 
-//         </div>
-//       </div>
-
-//       {/* --- MOBILE MENU OVERLAY --- */}
-//       <div 
-//         className={`md:hidden fixed top-20 left-0 w-full bg-black/95 backdrop-blur-2xl border-b border-white/10 transition-all duration-500 ease-in-out ${
-//           isOpen ? 'translate-y-0 opacity-100 visible h-[calc(100vh-80px)]' : '-translate-y-10 opacity-0 invisible h-0 overflow-hidden'
-//         }`}
-//       >
-//         <div className="flex flex-col items-center gap-8 pt-12">
-//           {['Home', 'About Us', 'Practice'].map((item) => (
-//             <Link 
-//               key={item} 
-//               to={getPath(item)}
-//               onClick={() => setIsOpen(false)}
-//               className="text-2xl font-bold text-white hover:text-cyan-400 transition-colors"
-//             >
-//               {item}
-//             </Link>
-//           ))}
-//           <div className="w-4/5 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent my-4"></div>
-//           <button onClick={() => { navigate('/signin'); setIsOpen(false); }} className="text-xl font-black text-slate-400 hover:text-white transition-colors">SIGN IN</button>
-//           <button 
-//             className="relative px-10 py-4 group"
-//             onClick={() => { navigate('/registration'); setIsOpen(false); }}
-//           >
-//              <div className="absolute inset-0 bg-gradient-to-r from-[#FF00FF] to-[#00FFFF] rounded-full blur-md opacity-60"></div>
-//              <div className="relative bg-black rounded-full px-10 py-3 border border-white/20">
-//                <span className="bg-gradient-to-r from-[#FF00FF] to-[#00FFFF] bg-clip-text text-transparent font-bold" onClick={() => navigate('/signup')} >Create Account</span>
-//              </div>
-//           </button>
-//         </div>
-//       </div>
-//     </nav>
-//   );
-// };
-
-// export default Navbar;
-
-
-import React, { useEffect, useState } from 'react';
-import { useNavigate, NavLink, Link, useLocation } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
-import { Menu, X, ChevronDown, Search } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { Flame, LogOut, Menu, Search, Undo2, User, FilePlus2, FileStack, X } from 'lucide-react';
 import { logoutUser } from '../authSlice';
 import axiosClient from '../utils/axiosClient';
+import { Avatar, BrandMark } from './ui';
+import { capitalize, difficultyColor } from '../utils/format';
 
-const navItems = [
-  { label: 'Home', path: '/' },
-  { label: 'Interview', path: '/interview' },
-  { label: 'Practice', path: '/practice' },
-  { label: 'Contest', path: '/contest' },
+const USER_LINKS = [
+  { label: 'Problems', to: '/', match: ['/', '/practice'] },
+  { label: 'Contests', to: '/contest' },
+  { label: 'Interview', to: '/interview' },
+  { label: 'Leaderboard', to: '/leaderboard' },
 ];
 
-const Navbar = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [allUsers, setAllUsers] = useState([]);
-  const [searchResults, setSearchResults] = useState([]);
-  const [showSearchResults, setShowSearchResults] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
+const GUEST_LINKS = [
+  { label: 'Problems', to: '/signin' },
+  { label: 'Contests', to: '/signin' },
+  { label: 'Interview prep', to: '/signin' },
+];
+
+const ADMIN_LINKS = [
+  { label: 'Overview', to: '/admin', end: true },
+  { label: 'Create problem', to: '/admin/create' },
+  { label: 'Contests', to: '/admin/contest' },
+  { label: 'Interview packs', to: '/admin/interview' },
+];
+
+/* Global search: problems and people, loaded lazily on first focus */
+const NavSearch = ({ onNavigate }) => {
+  const navigate = useNavigate();
+  const [term, setTerm] = useState('');
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState(null);
+  const inputRef = useRef(null);
+  const { user } = useSelector((state) => state.auth);
+
+  const load = async () => {
+    if (data) return;
+    try {
+      const [problems, people] = await Promise.all([
+        axiosClient.get('/problem/getAllProblem').catch(() => ({ data: [] })),
+        axiosClient.get('/user/getleaderboard').catch(() => ({ data: [] })),
+      ]);
+      setData({
+        problems: Array.isArray(problems.data) ? problems.data : [],
+        people: Array.isArray(people.data) ? people.data : [],
+      });
+    } catch {
+      setData({ problems: [], people: [] });
+    }
+  };
+
+  // "/" focuses search, like the design's keyboard hint
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag = document.activeElement?.tagName;
+      if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA' && !document.activeElement?.isContentEditable) {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const results = useMemo(() => {
+    const q = term.trim().toLowerCase();
+    if (!q || !data) return { problems: [], people: [] };
+    return {
+      problems: data.problems.filter((p) => p.title?.toLowerCase().includes(q)).slice(0, 5),
+      people: data.people
+        .filter((p) => p._id !== user?._id)
+        .filter((p) => `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase().includes(q))
+        .slice(0, 5),
+    };
+  }, [term, data, user?._id]);
+
+  const go = (path) => {
+    setTerm('');
+    setOpen(false);
+    inputRef.current?.blur();
+    onNavigate?.();
+    navigate(path);
+  };
+
+  const hasResults = results.problems.length + results.people.length > 0;
+
+  return (
+    <div className="relative w-full lg:w-60">
+      <div className="flex items-center gap-2 rounded-md border border-divider px-2.5 py-[7px] text-[13px] text-neutral-500 focus-within:border-accent">
+        <Search size={14} />
+        <input
+          ref={inputRef}
+          value={term}
+          onFocus={() => {
+            load();
+            setOpen(true);
+          }}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onChange={(e) => {
+            setTerm(e.target.value);
+            setOpen(true);
+          }}
+          placeholder="Search problems, people"
+          className="min-w-0 flex-1 bg-transparent text-text outline-none placeholder:text-neutral-500"
+          style={{ outline: 'none' }}
+        />
+        <span className="rounded border border-divider px-[5px] text-[11px]">/</span>
+      </div>
+
+      {open && term.trim() && (
+        <div className="absolute left-0 right-0 z-50 mt-2 max-h-80 overflow-y-auto rounded-lg bg-surface p-1.5 elev-lg">
+          {!data ? (
+            <p className="px-3 py-2 text-sm text-neutral-400">Searching…</p>
+          ) : !hasResults ? (
+            <p className="px-3 py-2 text-sm text-neutral-400">No matches</p>
+          ) : (
+            <>
+              {results.problems.length > 0 && <div className="eyebrow px-3 pb-1 pt-2 text-[11px]">Problems</div>}
+              {results.problems.map((p) => (
+                <button
+                  key={p._id}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => go(`/problem/${p._id}`)}
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-white/5"
+                >
+                  <span className="flex-1 truncate">{p.title}</span>
+                  <span className="text-xs" style={{ color: difficultyColor(p.difficulty) }}>
+                    {capitalize(p.difficulty)}
+                  </span>
+                </button>
+              ))}
+              {results.people.length > 0 && <div className="eyebrow px-3 pb-1 pt-2 text-[11px]">People</div>}
+              {results.people.map((p) => (
+                <button
+                  key={p._id}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => go(`/profile/${p._id}`)}
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-white/5"
+                >
+                  <Avatar user={p} size={22} />
+                  <span className="flex-1 truncate">
+                    {p.firstName} {p.lastName}
+                  </span>
+                  <span className="tnum text-xs text-neutral-400">{(p.xp || 0).toLocaleString()} XP</span>
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const Navbar = ({ admin = false }) => {
+  // Menus remember the page they were opened on, so navigating closes them
+  const [mobileOpenOn, setMobileOpenOn] = useState(null);
+  const [menuOpenOn, setMenuOpenOn] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
   const { isAuthenticated, user } = useSelector((state) => state.auth);
 
-  useEffect(() => {
-    setIsOpen(false);
-    setShowProfileMenu(false);
-    setShowSearchResults(false);
-  }, [location.pathname]);
+  const mobileOpen = mobileOpenOn === location.pathname;
+  const menuOpen = menuOpenOn === location.pathname;
+  const setMobileOpen = (next) => setMobileOpenOn((prev) => ((typeof next === 'function' ? next(prev === location.pathname) : next) ? location.pathname : null));
+  const setMenuOpen = (next) => setMenuOpenOn((prev) => ((typeof next === 'function' ? next(prev === location.pathname) : next) ? location.pathname : null));
 
-  const fetchUsersForSearch = async () => {
-    if (!isAuthenticated || allUsers.length > 0) return;
+  const links = admin ? ADMIN_LINKS : isAuthenticated ? USER_LINKS : GUEST_LINKS;
 
-    try {
-      setSearchLoading(true);
-      const { data } = await axiosClient.get('/user/getleaderboard');
-      const users = Array.isArray(data) ? data : [];
-      setAllUsers(users);
-    } catch {
-      setAllUsers([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
+  const isActive = (link) =>
+    !isAuthenticated && !admin
+      ? false
+      : link.match ? link.match.includes(location.pathname) : link.end ? location.pathname === link.to : location.pathname.startsWith(link.to);
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const trimmed = searchTerm.trim().toLowerCase();
-    if (!trimmed) {
-      setSearchResults([]);
-      return;
-    }
-
-    const nextResults = allUsers
-      .filter((entry) => entry?._id && entry._id !== user?._id)
-      .filter((entry) => {
-        const fullName = `${entry?.firstName || ''} ${entry?.lastName || ''}`.trim().toLowerCase();
-        const email = (entry?.emailId || '').toLowerCase();
-        return fullName.includes(trimmed) || email.includes(trimmed);
-      })
-      .slice(0, 6);
-
-    setSearchResults(nextResults);
-  }, [allUsers, isAuthenticated, searchTerm, user?._id]);
-
-  const handleLogout = () => {
-    dispatch(logoutUser());
+  const handleLogout = async () => {
+    await dispatch(logoutUser());
     navigate('/signin');
   };
 
-  const navClass = ({ isActive }) =>
-    `text-sm font-semibold tracking-wide transition-colors ${
-      isActive ? 'text-cyan-300' : 'text-slate-300 hover:text-cyan-200'
-    }`;
+  const linkClass = (link) => `text-sm transition-colors hover:text-accent ${isActive(link) ? 'text-accent' : 'text-neutral-300'}`;
 
-  const handleSearchSelect = (targetUserId) => {
-    setShowSearchResults(false);
-    setSearchTerm('');
-    navigate(`/profile/${targetUserId}`);
-  };
+  const menuItems = admin
+    ? [{ label: 'Back to app', icon: Undo2, to: '/practice' }]
+    : [
+        { label: 'Profile', icon: User, to: '/profile' },
+        { label: 'Contribute a problem', icon: FilePlus2, to: '/create-problem' },
+        { label: 'My problems', icon: FileStack, to: '/my-problems' },
+      ];
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-18 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link to="/" className="group flex items-center gap-3">
-          <div className="relative h-10 w-10 overflow-hidden rounded-full border border-white/20 bg-slate-900">
-            <img src="/logo.png" alt="ALGORISE" className="h-full w-full object-cover transition duration-300 group-hover:scale-110" />
-          </div>
-          <span className="brand-gradient text-xl font-black tracking-tight">ALGORISE</span>
+    <nav className="sticky top-0 z-50 bg-bg/85 backdrop-blur-md">
+      <div className="relative flex items-center gap-7 px-4 py-3.5 sm:px-8">
+        <Link to={admin ? '/admin' : '/'} className="mr-3 flex items-center gap-2.5 text-[17px] font-medium text-text">
+          <BrandMark />
+          <span>Algorise</span>
+          {admin && <span className="tag tag-accent ml-1">Admin</span>}
         </Link>
 
         <div className="hidden items-center gap-7 md:flex">
-          {navItems.map((item) => (
-            <NavLink key={item.path} to={item.path} className={navClass} end={item.path === '/'}>
-              {item.label}
-            </NavLink>
-          ))}
-          {isAuthenticated && (
-            <NavLink to="/leaderboard" className={navClass}>
-              Leaderboard
-            </NavLink>
+          {links.map((link) =>
+            link.match ? (
+              <Link key={link.label} to={link.to} className={linkClass(link)}>
+                {link.label}
+              </Link>
+            ) : (
+              <NavLink key={link.label} to={link.to} end={link.end} className={() => linkClass(link)}>
+                {link.label}
+              </NavLink>
+            )
           )}
         </div>
 
-        {isAuthenticated && (
-          <div className="relative hidden w-full max-w-xs md:block">
-            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2">
-              <Search size={16} className="text-slate-400" />
-              <input
-                value={searchTerm}
-                onFocus={() => {
-                  fetchUsersForSearch();
-                  setShowSearchResults(true);
-                }}
-                onChange={(event) => {
-                  setSearchTerm(event.target.value);
-                  setShowSearchResults(true);
-                }}
-                placeholder="Search users"
-                className="w-full bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-500"
-              />
-            </div>
+        <div className="flex-1" />
 
-            {showSearchResults && (searchTerm.trim() || searchLoading) && (
-              <div className="glass-panel absolute left-0 right-0 z-30 mt-2 max-h-72 overflow-y-auto rounded-xl p-2">
-                {searchLoading ? (
-                  <p className="px-3 py-2 text-sm text-slate-400">Loading users...</p>
-                ) : searchResults.length > 0 ? (
-                  searchResults.map((entry) => (
-                    <button
-                      key={entry._id}
-                      onClick={() => handleSearchSelect(entry._id)}
-                      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition hover:bg-white/5"
-                    >
-                      <div>
-                        <p className="text-sm font-semibold text-white">{entry.firstName} {entry.lastName}</p>
-                        <p className="text-xs text-slate-400">{entry.emailId}</p>
-                      </div>
-                      <p className="text-xs text-cyan-300">#{entry.globalRank || 'N/A'}</p>
-                    </button>
-                  ))
-                ) : (
-                  <p className="px-3 py-2 text-sm text-slate-400">No users found</p>
-                )}
+        {isAuthenticated ? (
+          <>
+            {!admin && (
+              <div className="hidden items-center gap-7 lg:flex">
+                <NavSearch />
+                <span className="flex items-center gap-1.5 text-[13px] text-neutral-300" title="Current streak">
+                  <Flame size={15} className="text-accent" />
+                  <span className="tnum">{user?.streak || 0}</span>
+                </span>
               </div>
             )}
-          </div>
-        )}
+            {admin && (
+              <Link to="/practice" className="hidden items-center gap-1.5 text-[13px] text-neutral-300 hover:text-accent md:flex">
+                <Undo2 size={15} /> Back to app
+              </Link>
+            )}
 
-        <div className="hidden items-center gap-3 md:flex">
-          {!isAuthenticated ? (
-            <>
-              <button onClick={() => navigate('/signin')} className="btn-secondary">
-                Sign In
+            <div className="relative hidden md:block">
+              <button type="button" onClick={() => setMenuOpen((v) => !v)} className="block rounded-full" aria-label="Account menu">
+                <Avatar user={user} size={32} />
               </button>
-              <button onClick={() => navigate('/signup')} className="btn-primary">
-                Create Account
-              </button>
-            </>
-          ) : (
-            <div className="relative">
-              <button
-                onClick={() => setShowProfileMenu((prev) => !prev)}
-                className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-left transition hover:border-cyan-400/50"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-r from-cyan-500 to-purple-500 text-sm font-black text-white">
-                  {user?.firstName?.charAt(0) || 'U'}
-                </div>
-                <div className="hidden lg:block">
-                  <p className="text-xs font-semibold text-white">{user?.firstName || 'User'}</p>
-                  <p className="text-[10px] uppercase tracking-wider text-slate-400">{user?.role || 'member'}</p>
-                </div>
-                <ChevronDown size={16} className="text-slate-400" />
-              </button>
-
-              {showProfileMenu && (
+              {menuOpen && (
                 <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowProfileMenu(false)}></div>
-                  <div className="glass-panel absolute right-0 z-20 mt-2 w-56 rounded-xl p-2">
-                    <div className="border-b border-white/10 px-3 py-2">
-                      <p className="truncate text-sm font-semibold text-slate-200">{user?.emailId}</p>
+                  <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                  <div className="absolute right-0 z-20 mt-2 w-60 rounded-lg bg-surface p-1.5 elev-lg">
+                    <div className="px-3 py-2">
+                      <div className="truncate text-sm">
+                        {user?.firstName} {user?.lastName}
+                      </div>
+                      <div className="truncate text-xs text-neutral-400">{user?.emailId}</div>
                     </div>
+                    <div className="rule my-1" />
+                    {menuItems.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => navigate(item.to)}
+                          className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/5"
+                        >
+                          <Icon size={15} className="text-neutral-400" /> {item.label}
+                        </button>
+                      );
+                    })}
                     <button
-                      onClick={() => navigate('/profile')}
-                      className="mt-1 block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-300 transition hover:bg-white/5 hover:text-cyan-300"
-                    >
-                      View Profile
-                    </button>
-                    <button
-                      onClick={() => navigate('/create-problem')}
-                      className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-300 transition hover:bg-white/5 hover:text-cyan-300"
-                    >
-                      Contribute to Create a New  Problem
-                    </button>
-                    <button
-                      onClick={() => navigate('/my-problems')}
-                      className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-300 transition hover:bg-white/5 hover:text-cyan-300"
-                    >
-                      My Publish Problem
-                    </button>
-                    <button
+                      type="button"
                       onClick={handleLogout}
-                      className="block w-full rounded-lg px-3 py-2 text-left text-sm text-red-400 transition hover:bg-red-500/10"
+                      className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm hover:bg-white/5"
+                      style={{ color: 'var(--color-hard)' }}
                     >
-                      Log Out
+                      <LogOut size={15} /> Log out
                     </button>
                   </div>
                 </>
               )}
             </div>
-          )}
-        </div>
+          </>
+        ) : (
+          <div className="hidden items-center gap-7 md:flex">
+            <Link to="/signin" className="text-sm text-neutral-300 hover:text-accent">
+              Sign in
+            </Link>
+            <Link to="/signup" className="btn btn-primary">
+              Get started
+            </Link>
+          </div>
+        )}
 
         <button
-          className="inline-flex rounded-lg border border-white/10 p-2 text-slate-200 md:hidden"
-          onClick={() => setIsOpen((prev) => !prev)}
+          type="button"
+          className="btn btn-icon btn-secondary md:hidden"
+          onClick={() => setMobileOpen((v) => !v)}
           aria-label="Toggle menu"
         >
-          {isOpen ? <X size={20} /> : <Menu size={20} />}
+          {mobileOpen ? <X size={18} /> : <Menu size={18} />}
         </button>
+
+        <div className="rule absolute bottom-0 left-0 right-0" />
       </div>
 
-      {isOpen && (
-        <div className="border-t border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur-xl md:hidden">
-          <div className="flex flex-col gap-3">
-            {isAuthenticated && (
-              <div className="mb-2">
-                <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2">
-                  <Search size={16} className="text-slate-400" />
-                  <input
-                    value={searchTerm}
-                    onFocus={() => fetchUsersForSearch()}
-                    onChange={(event) => setSearchTerm(event.target.value)}
-                    placeholder="Search users"
-                    className="w-full bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-500"
-                  />
-                </div>
-
-                {searchTerm.trim() && (
-                  <div className="mt-2 rounded-xl border border-white/10 bg-slate-900/90 p-2">
-                    {searchResults.length > 0 ? (
-                      searchResults.map((entry) => (
-                        <button
-                          key={entry._id}
-                          onClick={() => {
-                            setIsOpen(false);
-                            handleSearchSelect(entry._id);
-                          }}
-                          className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-200 hover:bg-white/5"
-                        >
-                          {entry.firstName} {entry.lastName}
-                        </button>
-                      ))
-                    ) : (
-                      <p className="px-3 py-2 text-sm text-slate-400">No users found</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {navItems.map((item) => (
-              <NavLink key={item.path} to={item.path} className={navClass} end={item.path === '/'}>
-                {item.label}
-              </NavLink>
-            ))}
-            {isAuthenticated && (
-              <>
-                <NavLink to="/leaderboard" className={navClass}>
-                  Leaderboard
-                </NavLink>
-                <NavLink to="/profile" className={navClass}>
-                  Profile
-                </NavLink>
-                <NavLink to="/create-problem" className={navClass}>
-                  Submit Problem
-                </NavLink>
-                <NavLink to="/my-problems" className={navClass}>
-                  My Submissions
-                </NavLink>
-                <button onClick={handleLogout} className="mt-2 w-fit rounded-lg px-3 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/10">
-                  Log Out
-                </button>
-              </>
-            )}
-            {!isAuthenticated && (
-              <div className="mt-2 flex items-center gap-2">
-                <button onClick={() => navigate('/signin')} className="btn-secondary">
-                  Sign In
-                </button>
-                <button onClick={() => navigate('/signup')} className="btn-primary">
-                  Join Now
-                </button>
-              </div>
-            )}
-          </div>
+      {mobileOpen && (
+        <div className="flex flex-col gap-1 bg-bg px-4 pb-5 pt-3 md:hidden">
+          {isAuthenticated && !admin && (
+            <div className="mb-3">
+              <NavSearch onNavigate={() => setMobileOpen(false)} />
+            </div>
+          )}
+          {links.map((link) => (
+            <Link key={link.label} to={link.to} className={`py-2 ${linkClass(link)}`}>
+              {link.label}
+            </Link>
+          ))}
+          {isAuthenticated ? (
+            <>
+              <div className="rule my-2" />
+              {menuItems.map(({ label, to }) => (
+                <Link key={label} to={to} className="py-2 text-sm text-neutral-300">
+                  {label}
+                </Link>
+              ))}
+              <button type="button" onClick={handleLogout} className="py-2 text-left text-sm" style={{ color: 'var(--color-hard)' }}>
+                Log out
+              </button>
+            </>
+          ) : (
+            <div className="mt-3 flex gap-3">
+              <Link to="/signin" className="btn btn-secondary">
+                Sign in
+              </Link>
+              <Link to="/signup" className="btn btn-primary">
+                Create account
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </nav>

@@ -1,242 +1,188 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { CalendarDays, Flag, Plus, Save, Search, ShieldCheck, Timer, Trash2, Users } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Check, Search } from 'lucide-react';
 import axiosClient from '../utils/axiosClient';
+import { Notice, PageLoader } from './ui';
+import { capitalize, difficultyColor } from '../utils/format';
+
+const EMPTY = { title: '', description: '', startTime: '', endTime: '', maxParticipants: 500 };
+
+// datetime-local values have no timezone; convert in the browser so the server stores the admin's intended moment
+const toIso = (local) => (local ? new Date(local).toISOString() : '');
+
+const durationLabel = (start, end) => {
+  if (!start || !end) return '';
+  const mins = Math.round((new Date(end) - new Date(start)) / 60000);
+  if (mins <= 0) return 'End must be after start';
+  return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60 ? `${mins % 60}m` : ''}`.trim() : `${mins} minutes`;
+};
 
 const AdminContest = () => {
-  const navigate = useNavigate();
   const [problems, setProblems] = useState([]);
-  const [loadingProblems, setLoadingProblems] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState('');
-  const [selectedProblemIds, setSelectedProblemIds] = useState([]);
-  const [form, setForm] = useState({
-    title: '',
-    description: '',
-    startTime: '',
-    endTime: '',
-    maxParticipants: 500,
-  });
-
-  const formatTags = (tags) => (Array.isArray(tags) ? tags.join(', ') : String(tags || ''));
+  const [selected, setSelected] = useState([]);
+  const [form, setForm] = useState(EMPTY);
+  const [notice, setNotice] = useState(null);
+  const [created, setCreated] = useState(null);
 
   useEffect(() => {
-    const loadProblems = async () => {
-      try {
-        const { data } = await axiosClient.get('/problem/getAllProblem');
-        setProblems(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error('Failed to load problems for contest creation', error);
-      } finally {
-        setLoadingProblems(false);
-      }
-    };
-
-    loadProblems();
+    axiosClient
+      .get('/problem/getAllProblem')
+      .then(({ data }) => setProblems(Array.isArray(data) ? data.filter((p) => p.status === 'approved' || p.status == null) : []))
+      .catch(() => setNotice({ type: 'error', message: 'Could not load problems.' }))
+      .finally(() => setLoading(false));
   }, []);
 
-  const filteredProblems = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return problems;
-    return problems.filter((problem) => {
-      return [problem.title, problem.difficulty, formatTags(problem.tags)]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(needle));
-    });
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return problems;
+    return problems.filter((p) => `${p.title} ${p.difficulty} ${(p.tags || []).join(' ')}`.toLowerCase().includes(q));
   }, [problems, query]);
 
-  const toggleProblem = (problemId) => {
-    setSelectedProblemIds((prev) =>
-      prev.includes(problemId)
-        ? prev.filter((id) => id !== problemId)
-        : [...prev, problemId]
-    );
-  };
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const toggle = (id) => setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const duration = durationLabel(form.startTime, form.endTime);
+  const invalidTimes = duration === 'End must be after start';
 
-    if (selectedProblemIds.length === 0) {
-      alert('Please select at least one problem for the contest.');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (selected.length === 0) {
+      setNotice({ type: 'error', message: 'Pick at least one problem for the contest.' });
       return;
     }
-
+    if (invalidTimes) {
+      setNotice({ type: 'error', message: 'The contest has to end after it starts.' });
+      return;
+    }
     try {
       setSaving(true);
+      setNotice(null);
       await axiosClient.post('/contest/create', {
         ...form,
+        startTime: toIso(form.startTime),
+        endTime: toIso(form.endTime),
         maxParticipants: Number(form.maxParticipants) || 500,
-        problems: selectedProblemIds,
+        problems: selected,
       });
-      alert('Contest created successfully.');
-      navigate('/contest');
+      setCreated(form.title);
+      setForm(EMPTY);
+      setSelected([]);
     } catch (error) {
-      console.error('Contest create failed', error.response || error);
-      alert(`Failed to create contest: ${error.response?.data || error.message}`);
+      const msg = error?.response?.data;
+      setNotice({ type: 'error', message: typeof msg === 'string' ? msg : 'Could not create the contest.' });
     } finally {
       setSaving(false);
     }
   };
 
+  if (loading) return <PageLoader label="Loading problems…" />;
+
   return (
-    <div className="min-h-screen bg-[#05070a] px-6 py-16 text-white">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-12 border-l-4 border-cyan-500 pl-6">
-          <div className="mb-2 flex items-center gap-2 text-cyan-400 text-[10px] font-mono uppercase tracking-[0.5em]">
-            <ShieldCheck size={14} /> Admin / Contest Builder
-          </div>
-          <h1 className="text-5xl font-black tracking-tighter uppercase">Create Contest</h1>
-          <p className="mt-3 max-w-2xl text-sm text-slate-400">
-            Build a timed contest, attach problems, and publish it to the contest arena.
-          </p>
+    <div className="page fade-in">
+      <h1 className="page-title">Contest builder</h1>
+      <p className="page-sub">Schedule a timed contest and choose its problems. It appears on Contests right away.</p>
+
+      {created && (
+        <div className="mt-6">
+          <Notice type="success" onClose={() => setCreated(null)}>
+            “{created}” is scheduled. <Link to="/contest">View contests</Link>
+          </Notice>
         </div>
+      )}
+      {notice && (
+        <div className="mt-6">
+          <Notice type={notice.type} onClose={() => setNotice(null)}>
+            {notice.message}
+          </Notice>
+        </div>
+      )}
 
-        <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="space-y-8">
-            <div className="rounded-4xl border border-white/10 bg-slate-900/30 p-8 backdrop-blur-2xl">
-              <div className="mb-8 flex items-center gap-3 text-cyan-400">
-                <CalendarDays size={20} />
-                <h2 className="text-sm font-black uppercase tracking-[0.2em] text-white">Contest Details</h2>
-              </div>
-
-              <div className="space-y-5">
-                <input
-                  value={form.title}
-                  onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                  placeholder="Contest title"
-                  className="w-full rounded-2xl border border-white/10 bg-black/50 px-5 py-4 outline-none placeholder:text-slate-700 focus:border-cyan-500"
-                />
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                  placeholder="Contest description"
-                  rows={5}
-                  className="w-full resize-none rounded-2xl border border-white/10 bg-black/50 px-5 py-4 outline-none placeholder:text-slate-700 focus:border-cyan-500"
-                />
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="space-y-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Start Time</span>
-                    <input
-                      type="datetime-local"
-                      value={form.startTime}
-                      onChange={(e) => setForm((prev) => ({ ...prev, startTime: e.target.value }))}
-                      className="w-full rounded-2xl border border-white/10 bg-black/50 px-5 py-4 outline-none focus:border-cyan-500"
-                    />
-                  </label>
-                  <label className="space-y-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">End Time</span>
-                    <input
-                      type="datetime-local"
-                      value={form.endTime}
-                      onChange={(e) => setForm((prev) => ({ ...prev, endTime: e.target.value }))}
-                      className="w-full rounded-2xl border border-white/10 bg-black/50 px-5 py-4 outline-none focus:border-cyan-500"
-                    />
-                  </label>
-                </div>
-
-                <label className="space-y-2 block">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Max Participants</span>
-                  <input
-                    type="number"
-                    min="1"
-                    value={form.maxParticipants}
-                    onChange={(e) => setForm((prev) => ({ ...prev, maxParticipants: e.target.value }))}
-                    className="w-full rounded-2xl border border-white/10 bg-black/50 px-5 py-4 outline-none focus:border-cyan-500"
-                  />
-                </label>
-              </div>
+      <form onSubmit={handleSubmit} className="mt-10 grid gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+        <div className="flex flex-col gap-5">
+          <div className="field">
+            <label htmlFor="c-title">Title</label>
+            <input id="c-title" className="input" required value={form.title} onChange={set('title')} placeholder="Weekly Contest 49" />
+          </div>
+          <div className="field">
+            <label htmlFor="c-desc">Description</label>
+            <textarea id="c-desc" className="input" rows={4} required value={form.description} onChange={set('description')} placeholder="4 problems · 90 minutes · rated" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="field">
+              <label htmlFor="c-start">Starts</label>
+              <input id="c-start" type="datetime-local" className="input" required value={form.startTime} onChange={set('startTime')} />
             </div>
-
-            <div className="rounded-4xl border border-white/10 bg-slate-900/30 p-8 backdrop-blur-2xl">
-              <div className="mb-6 flex items-center gap-3 text-emerald-400">
-                <Flag size={20} />
-                <h2 className="text-sm font-black uppercase tracking-[0.2em] text-white">Selected Problems</h2>
-              </div>
-
-              {selectedProblemIds.length === 0 ? (
-                <p className="text-sm text-slate-400">Pick at least one problem from the list to enable contest creation.</p>
-              ) : (
-                <div className="flex flex-wrap gap-3">
-                  {selectedProblemIds.map((problemId) => {
-                    const problem = problems.find((item) => item._id === problemId);
-                    return (
-                      <button
-                        type="button"
-                        key={problemId}
-                        onClick={() => toggleProblem(problemId)}
-                        className="flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-emerald-200"
-                      >
-                        {problem?.title || 'Problem'}
-                        <Trash2 size={12} />
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+            <div className="field">
+              <label htmlFor="c-end">Ends</label>
+              <input id="c-end" type="datetime-local" className="input" required value={form.endTime} onChange={set('endTime')} />
             </div>
           </div>
+          {duration && (
+            <p className="-mt-2 text-[13px]" style={{ color: invalidTimes ? 'var(--color-hard)' : 'var(--color-neutral-400)' }}>
+              {invalidTimes ? duration : `Runs for ${duration} · times are in your local timezone`}
+            </p>
+          )}
+          <div className="field max-w-50">
+            <label htmlFor="c-max">Max participants</label>
+            <input id="c-max" type="number" min={1} className="input" value={form.maxParticipants} onChange={set('maxParticipants')} />
+          </div>
 
-          <div className="rounded-4xl border border-white/10 bg-slate-900/30 p-8 backdrop-blur-2xl">
-            <div className="mb-6 flex items-center gap-3 text-purple-400">
-              <Timer size={20} />
-              <h2 className="text-sm font-black uppercase tracking-[0.2em] text-white">Problem Picker</h2>
-            </div>
-
-            <div className="mb-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/40 px-4 py-3">
-              <Search size={16} className="text-slate-500" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search problems..."
-                className="w-full bg-transparent outline-none placeholder:text-slate-700"
-              />
-            </div>
-
-            {loadingProblems ? (
-              <p className="text-sm text-slate-400">Loading problems...</p>
-            ) : (
-              <div className="max-h-130 space-y-3 overflow-y-auto pr-1">
-                {filteredProblems.map((problem) => {
-                  const checked = selectedProblemIds.includes(problem._id);
-                  return (
-                    <button
-                      key={problem._id}
-                      type="button"
-                      onClick={() => toggleProblem(problem._id)}
-                      className={`w-full rounded-2xl border p-4 text-left transition ${
-                        checked
-                          ? 'border-cyan-400/50 bg-cyan-500/10'
-                          : 'border-white/10 bg-black/30 hover:border-white/20'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <h3 className="font-black">{problem.title}</h3>
-                          <p className="text-xs uppercase tracking-widest text-slate-500">
-                            {problem.difficulty} • {formatTags(problem.tags)}
-                          </p>
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                          {checked ? 'Selected' : 'Add'}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+          <div className="row-rule pb-3 pt-2 text-sm text-neutral-300">
+            {selected.length} problem{selected.length === 1 ? '' : 's'} selected
+            {selected.length > 0 && (
+              <span className="text-neutral-500"> · {selected.map((id) => problems.find((p) => p._id === id)?.title).filter(Boolean).join(', ')}</span>
             )}
-
-            <button
-              type="submit"
-              disabled={saving}
-              className="mt-6 flex w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-black px-5 py-4 font-black uppercase tracking-[0.3em] transition hover:border-cyan-500/40 disabled:opacity-60"
-            >
-              {saving ? 'Creating...' : <><Save size={18} /> Create Contest</>}
+          </div>
+          <div>
+            <button type="submit" className="btn btn-primary btn-lg" disabled={saving}>
+              {saving ? 'Scheduling…' : 'Schedule contest'}
             </button>
           </div>
-        </form>
-      </div>
+        </div>
+
+        <div className="min-w-0">
+          <div className="flex items-center gap-3">
+            <span className="eyebrow">Problems</span>
+            <span className="flex-1" />
+            <div className="relative w-full sm:w-64">
+              <Search size={15} className="absolute left-2.5 top-2.75 text-neutral-500" />
+              <input className="input pl-8" placeholder="Search title or topic" value={query} onChange={(e) => setQuery(e.target.value)} />
+            </div>
+          </div>
+          <div className="mt-3 max-h-[560px] overflow-y-auto pr-1">
+            {visible.map((p) => {
+              const on = selected.includes(p._id);
+              return (
+                <button
+                  key={p._id}
+                  type="button"
+                  onClick={() => toggle(p._id)}
+                  aria-pressed={on}
+                  className="row-rule flex w-full items-center gap-3 py-3 text-left hover:bg-white/3"
+                >
+                  <span
+                    className="grid h-5 w-5 flex-none place-items-center rounded-sm"
+                    style={{ border: `1px solid ${on ? 'var(--color-accent)' : 'var(--color-divider)'}`, background: on ? 'var(--color-accent-800)' : 'transparent' }}
+                  >
+                    {on && <Check size={13} className="text-accent-100" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[15px]">{p.title}</span>
+                    <span className="block truncate text-[13px] capitalize text-neutral-400">{(p.tags || []).join(' · ')}</span>
+                  </span>
+                  <span className="text-sm" style={{ color: difficultyColor(p.difficulty) }}>
+                    {capitalize(p.difficulty)}
+                  </span>
+                </button>
+              );
+            })}
+            {visible.length === 0 && <p className="py-6 text-sm text-neutral-400">No problems match.</p>}
+          </div>
+        </div>
+      </form>
     </div>
   );
 };

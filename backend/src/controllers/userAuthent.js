@@ -83,6 +83,15 @@ import redisClient from "../config/redis.js";
 import User from "../models/user.js";
 import validate from "../utils/validator.js";
 
+// Session cookie: httpOnly so page scripts (and XSS) can't read the token
+const COOKIE_OPTIONS = { maxAge: 60 * 60 * 1000, httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" };
+
+// First names must be 3–20 characters (see the user model)
+const fitFirstName = (...candidates) => {
+  const name = candidates.map((c) => (c || "").trim()).find((c) => c.length >= 3) || "Coder";
+  return name.slice(0, 20);
+};
+
 const buildPublicUser = (user) => ({
   _id: user._id,
   firstName: user.firstName,
@@ -99,6 +108,7 @@ const buildPublicUser = (user) => ({
   followersCount: user.followers?.length || 0,
   followingCount: user.following?.length || 0,
   problemSolvedCount: user.problemSolved?.length || 0,
+  createdAt: user.createdAt,
   followers: (user.followers || []).map((follower) => ({
     _id: follower._id,
     firstName: follower.firstName,
@@ -122,12 +132,16 @@ const register = async (req, res) => {
   try {
     validate(req.body);
 
-    const { firstName, emailId, password } = req.body;
+    const { firstName, lastName, emailId, password } = req.body;
 
-    req.body.password = await bcrypt.hash(password, 10);
-    req.body.role = "user";
-
-    const user = await User.create(req.body);
+    // Only accept known signup fields so clients can't set role, xp, rank, etc.
+    const user = await User.create({
+      firstName,
+      lastName,
+      emailId,
+      password: await bcrypt.hash(password, 10),
+      role: "user",
+    });
 
     const token = jwt.sign(
       { _id: user._id, emailId, role: "user" },
@@ -135,7 +149,7 @@ const register = async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    res.cookie("token", token, { maxAge: 60 * 60 * 1000 });
+    res.cookie("token", token, COOKIE_OPTIONS);
 
     res.status(201).json({
       user: {
@@ -150,10 +164,17 @@ const register = async (req, res) => {
         bio: user.bio || '',
         followersCount: user.followers?.length || 0,
         followingCount: user.following?.length || 0,
+        streak: user.streak || 0,
+        globalRank: user.globalRank || 0,
+        xp: user.xp || 0,
+        problemSolvedCount: user.problemSolved?.length || 0,
       },
       message: "Registered Successfully",
     });
   } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(409).send("Error: An account with this email already exists. Sign in instead.");
+    }
     res.status(400).send("Error: " + error.message);
   }
 };
@@ -167,6 +188,7 @@ const login = async (req, res) => {
 
     const user = await User.findOne({ emailId });
     if (!user) throw new Error("Invalid Credentials");
+    if (!user.password) throw new Error("This account uses Google sign-in. Continue with Google instead.");
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) throw new Error("Invalid Credentials");
@@ -177,7 +199,7 @@ const login = async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    res.cookie("token", token, { maxAge: 60 * 60 * 1000 });
+    res.cookie("token", token, COOKIE_OPTIONS);
 
     res.status(200).json({
       user: {
@@ -192,6 +214,10 @@ const login = async (req, res) => {
         bio: user.bio || '',
         followersCount: user.followers?.length || 0,
         followingCount: user.following?.length || 0,
+        streak: user.streak || 0,
+        globalRank: user.globalRank || 0,
+        xp: user.xp || 0,
+        problemSolvedCount: user.problemSolved?.length || 0,
       },
       message: "Login Successfully",
     });
@@ -210,7 +236,7 @@ const logout = async (req, res) => {
       await redisClient.expireAt(`token:${token}`, payload.exp);
     }
 
-    res.cookie("token", null, { expires: new Date(Date.now()) });
+    res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: COOKIE_OPTIONS.secure });
     res.send("Logged Out Successfully");
   } catch (error) {
     res.status(503).send("Error: " + error.message);
@@ -250,7 +276,7 @@ const adminRegister=async(req,res)=>{
 
     const user=await User.create(req.body);
     const token=jwt.sign({_id:user._id,emailId:emailId,role:user.role},process.env.JWT_KEY,{expiresIn:60*60});
-    res.cookie('token',token,{maxAge:60*60*1000});
+    res.cookie('token',token,COOKIE_OPTIONS);
     res.status(201).send("User Registered Successfully");
   }catch(err){
     res.status(400).send("Error: "+err);
@@ -313,11 +339,15 @@ export const getLeaderboard = async (req, res) => {
     // 2. Sort: By XP (highest first)
     // 3. Limit: Top 50 agents
     const users = await User.find({ role: 'user' })
-      .select('firstName lastName xp streak _id')
-      .sort({ xp: -1 })
-      .limit(50);
-    
-    res.status(200).json(users);
+      .select('firstName lastName xp streak profilePicture problemSolved _id')
+      .sort({ xp: -1, _id: 1 })
+      .limit(50)
+      .lean();
+
+    // Send a count instead of the whole solved-problem list
+    res.status(200).json(
+      users.map(({ problemSolved, ...user }) => ({ ...user, problemSolvedCount: problemSolved?.length || 0 }))
+    );
   } catch (error) {
     console.error("Leaderboard Query Error:", error);
     res.status(500).json({ message: "Unable to sync with the User Grid." });
@@ -426,29 +456,46 @@ export const toggleFollowUser = async (req, res) => {
 const googleLogin = async (req, res) => {
   try {
     const { accessToken } = req.body;
-    if (!accessToken) {
+    if (!accessToken || typeof accessToken !== "string") {
       return res.status(400).json({ message: "Access token is required" });
     }
 
-    // Fetch user info from Google API
-    const response = await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`);
-    const googleUser = response.data;
-
-    if (!googleUser.email) {
-      return res.status(400).json({ message: "Invalid access token" });
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      console.error("GOOGLE_CLIENT_ID is not set; refusing Google sign-in.");
+      return res.status(500).json({ message: "Google sign-in is not configured on the server" });
     }
 
-    const { email, given_name, family_name, picture } = googleUser;
+    // 1. The token must have been issued to *our* client, not any app the user signed into
+    let tokenInfo;
+    try {
+      ({ data: tokenInfo } = await axios.get("https://oauth2.googleapis.com/tokeninfo", { params: { access_token: accessToken } }));
+    } catch {
+      return res.status(401).json({ message: "Google sign-in expired or was invalid. Please try again." });
+    }
+    if (tokenInfo.aud !== clientId && tokenInfo.azp !== clientId) {
+      return res.status(401).json({ message: "This Google token wasn't issued for Algorise" });
+    }
 
-    // Check if user exists in database
-    let user = await User.findOne({ emailId: email.toLowerCase() });
+    // 2. Profile, with the token in a header rather than the URL
+    const { data: googleUser } = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!googleUser.email || googleUser.email_verified === false) {
+      return res.status(401).json({ message: "Your Google account's email isn't verified" });
+    }
+
+    const { email, given_name, family_name, name, picture } = googleUser;
+    const emailId = email.toLowerCase();
+
+    let user = await User.findOne({ emailId });
 
     if (!user) {
-      // Create a new user if they do not exist
       user = await User.create({
-        firstName: given_name || email.split('@')[0],
+        firstName: fitFirstName(given_name, name, emailId.split("@")[0]),
         lastName: family_name || "",
-        emailId: email.toLowerCase(),
+        emailId,
         profilePicture: picture || "",
         role: "user",
       });
@@ -462,7 +509,7 @@ const googleLogin = async (req, res) => {
     );
 
     // Set cookie
-    res.cookie("token", token, { maxAge: 60 * 60 * 1000 });
+    res.cookie("token", token, COOKIE_OPTIONS);
 
     res.status(200).json({
       user: {
@@ -477,11 +524,16 @@ const googleLogin = async (req, res) => {
         bio: user.bio || '',
         followersCount: user.followers?.length || 0,
         followingCount: user.following?.length || 0,
+        streak: user.streak || 0,
+        globalRank: user.globalRank || 0,
+        xp: user.xp || 0,
+        problemSolvedCount: user.problemSolved?.length || 0,
       },
       message: "Google Login Successful",
     });
   } catch (error) {
-    res.status(500).json({ message: "Google Authentication failed", error: error?.response?.data?.error_description || error.message });
+    console.error("Google sign-in failed:", error?.response?.data || error.message);
+    res.status(500).json({ message: "Google sign-in failed. Please try again." });
   }
 };
 
